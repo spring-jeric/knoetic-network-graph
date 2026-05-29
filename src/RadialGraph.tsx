@@ -1129,7 +1129,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                     <span style={{ fontSize: 10, fontWeight: 600, color: "#374151", fontFamily: "Inter, system-ui, sans-serif" }}>click & drag</span>
                   </div>
                   <div style={{ fontSize: 10, color: "#9CA3AF", lineHeight: 1.5, fontFamily: "Inter, system-ui, sans-serif", paddingLeft: 1 }}>
-                    draw a box on the canvas to zoom into that section — useful on 3-level expanded view
+                    then draw a box to zoom into that area
                   </div>
                 </div>
 
