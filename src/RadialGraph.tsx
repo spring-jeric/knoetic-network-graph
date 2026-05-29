@@ -115,6 +115,10 @@ export default function RadialGraph({ data }: RadialGraphProps) {
   const [boxZoomActive, setBoxZoomActive] = useState(false);
   const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
   const isDraggingBox = useRef(false);
+  // Ref mirror of tooltip — lets the keyboard handler read current tooltip state
+  // without being added to the effect's deps (which would re-register on every hover).
+  const tooltipRef = useRef(tooltip);
+  tooltipRef.current = tooltip;
 
   // Panel state
   const [panelOpen, setPanelOpen] = useState(true);
@@ -133,6 +137,12 @@ export default function RadialGraph({ data }: RadialGraphProps) {
         setBoxZoomActive(true);
       }
       if (e.key === "Escape") {
+        // If a tooltip is open: dismiss it but keep hoveredId so the user can
+        // trace connected nodes without the popup covering the graph.
+        if (tooltipRef.current) {
+          setTooltip(null);
+          return;
+        }
         setBoxZoomActive(false);
         setSelectionBox(null);
         isDraggingBox.current = false;
@@ -1233,23 +1243,39 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                     ))}
                   </div>
 
-                  {/* Ctrl+click hint */}
+                  {/* Footer hints */}
                   <div style={{
-                    display: "flex", alignItems: "center", gap: 5,
                     borderTop: "1px solid #F3F4F6", paddingTop: 10,
+                    display: "flex", flexDirection: "column", gap: 6,
                   }}>
-                    <kbd style={{
-                      display: "inline-flex", alignItems: "center",
-                      padding: "2px 6px", fontSize: 9,
-                      fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600,
-                      color: "#9CA3AF",
-                      background: "#F9FAFB",
-                      border: "1px solid #E5E7EB",
-                      borderRadius: 4, lineHeight: 1.4, flexShrink: 0,
-                    }}>Ctrl</kbd>
-                    <span style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif" }}>
-                      + click this node to view details
-                    </span>
+                    {/* Ctrl+click hint */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <kbd style={{
+                        display: "inline-flex", alignItems: "center",
+                        padding: "2px 6px", fontSize: 9,
+                        fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600,
+                        color: "#9CA3AF", background: "#F9FAFB",
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 4, lineHeight: 1.4, flexShrink: 0,
+                      }}>Ctrl</kbd>
+                      <span style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif" }}>
+                        + click to view full details
+                      </span>
+                    </div>
+                    {/* Esc hint */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <kbd style={{
+                        display: "inline-flex", alignItems: "center",
+                        padding: "2px 6px", fontSize: 9,
+                        fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600,
+                        color: "#9CA3AF", background: "#F9FAFB",
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 4, lineHeight: 1.4, flexShrink: 0,
+                      }}>Esc</kbd>
+                      <span style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif" }}>
+                        dismiss to trace connections
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
