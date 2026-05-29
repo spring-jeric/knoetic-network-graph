@@ -1125,11 +1125,9 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       border: "1px solid rgba(59,130,246,0.25)",
                       borderRadius: 6, lineHeight: 1.3,
                     }}>Z</kbd>
-                    <span style={{ fontSize: 10, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif" }}>then</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: "#374151", fontFamily: "Inter, system-ui, sans-serif" }}>click & drag</span>
                   </div>
                   <div style={{ fontSize: 10, color: "#9CA3AF", lineHeight: 1.5, fontFamily: "Inter, system-ui, sans-serif", paddingLeft: 1 }}>
-                    then draw a box to zoom into that area
+                    then draw a box<br />to zoom into that area
                   </div>
                 </div>
 
