@@ -108,7 +108,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
   const [dimensions, setDimensions] = useState({ width: 960, height: 700 });
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["0"]));
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; node: OrgNode; effectiveScore: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{ nodeX: number; nodeY: number; nodeR: number; node: OrgNode; effectiveScore: number } | null>(null);
   const [search, setSearch] = useState("");
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [transform, setTransform] = useState<d3.ZoomTransform>(d3.zoomIdentity);
@@ -121,6 +121,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
   const [selectedCycle, setSelectedCycle] = useState(PERFORMANCE_CYCLES[0].id);
   const [viewMode, setViewMode] = useState<ViewMode>("individual");
   const [expansionDepth, setExpansionDepth] = useState<ExpansionDepth>(1);
+  const [layoutVersion, setLayoutVersion] = useState<"v1" | "v2" | "v3">("v1");
   const [legendTooltip, setLegendTooltip] = useState(false);
   const [showColorBorder, setShowColorBorder] = useState(true);
   const [showColorBadge, setShowColorBadge] = useState(true);
@@ -145,8 +146,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     if (!boxZoomActive) return;
     e.preventDefault();
     e.stopPropagation();
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     isDraggingBox.current = true;
@@ -155,8 +155,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
 
   const handleBoxMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDraggingBox.current || !selectionBox) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const rect = e.currentTarget.getBoundingClientRect();
     setSelectionBox((prev) => prev ? { ...prev, endX: e.clientX - rect.left, endY: e.clientY - rect.top } : null);
   }, [selectionBox]);
 
@@ -262,6 +261,18 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     const nodes: LayoutNode[] = [];
     const links: LayoutLink[] = [];
 
+    // V3 helper: minimum arc the entire subtree rooted at `node` needs so no
+    // node in it visually stacks with its siblings.
+    function subtreeMinArc(node: OrgNode, id: string, depth: number): number {
+      const r = depth * RING_RADIUS;
+      const nr = NODE_RADIUS_BY_DEPTH[Math.min(depth, NODE_RADIUS_BY_DEPTH.length - 1)];
+      const selfMin = r > 0 ? (2 * nr * 1.8) / r : 0;
+      if (!expanded.has(id) || !node.children || node.children.length === 0) return selfMin;
+      const childrenMin = node.children.reduce((sum, child, i) =>
+        sum + subtreeMinArc(child, `${id}-${i}`, depth + 1), 0);
+      return Math.max(selfMin, childrenMin);
+    }
+
     function layout(
       node: OrgNode, id: string, depth: number, parentId: string | null,
       angleStart: number, angleEnd: number
@@ -276,16 +287,73 @@ export default function RadialGraph({ data }: RadialGraphProps) {
       if (parentId !== null) links.push({ sourceId: parentId, targetId: id });
 
       if (isExpanded && node.children) {
-        const step = (angleEnd - angleStart) / node.children.length;
-        node.children.forEach((child, i) => {
-          layout(child, `${id}-${i}`, depth + 1, id, angleStart + i * step, angleStart + (i + 1) * step);
-        });
+        const arcSpan = angleEnd - angleStart;
+        const n = node.children.length;
+
+        if (layoutVersion === "v1") {
+          // V1: perfectly equal arc per sibling.
+          const slotSize = arcSpan / n;
+          node.children.forEach((child, i) => {
+            const start = angleStart + slotSize * i;
+            layout(child, `${id}-${i}`, depth + 1, id, start, start + slotSize);
+          });
+        } else if (layoutVersion === "v3") {
+          // V3: weight each child by its entire subtree's minimum arc requirement.
+          // A single fully-expanded branch claims exactly what it needs at every depth
+          // level → zero stacking anywhere in that branch. When many branches are all
+          // expanded (L3 / Show All) every weight grows simultaneously → arc per child
+          // stays small → natural stacking, same as V1.
+          const r1 = (depth + 1) * RING_RADIUS;
+          const nr1 = NODE_RADIUS_BY_DEPTH[Math.min(depth + 1, NODE_RADIUS_BY_DEPTH.length - 1)];
+          const minArcSelf = r1 > 0 ? (2 * nr1 * 1.8) / r1 : 1;
+
+          const weights = node.children.map((child, i) => {
+            const childId = `${id}-${i}`;
+            const need = subtreeMinArc(child, childId, depth + 1);
+            return Math.max(1.0, need / minArcSelf);
+          });
+          const totalWeight = weights.reduce((a, b) => a + b, 0);
+          let anglePos = angleStart;
+          node.children.forEach((child, i) => {
+            const childSpan = arcSpan * weights[i] / totalWeight;
+            layout(child, `${id}-${i}`, depth + 1, id, anglePos, anglePos + childSpan);
+            anglePos += childSpan;
+          });
+        } else {
+          // V2: weight each expanded child by (n_grandchildren × minArcPerGC) / minArcSelf.
+          // This gives the parent exactly the arc it needs so grandchildren won't stack,
+          // while unexpanded siblings stay at weight 1.0.
+          // When many nodes are all expanded, weights converge → near-equal → natural stacking.
+          const childDepth = depth + 1;
+          const gcDepth = depth + 2;
+          const r1 = childDepth * RING_RADIUS;
+          const r2 = gcDepth * RING_RADIUS;
+          const nr1 = NODE_RADIUS_BY_DEPTH[Math.min(childDepth, NODE_RADIUS_BY_DEPTH.length - 1)];
+          const nr2 = NODE_RADIUS_BY_DEPTH[Math.min(gcDepth, NODE_RADIUS_BY_DEPTH.length - 1)];
+          const minArcSelf = r1 > 0 ? (2 * nr1 * 1.8) / r1 : 1;
+          const minArcGC   = r2 > 0 ? (2 * nr2 * 1.8) / r2 : 0;
+
+          const weights = node.children.map((child, i) => {
+            const childId = `${id}-${i}`;
+            if (expanded.has(childId) && (child.children?.length ?? 0) > 0) {
+              return Math.max(1.0, (child.children!.length * minArcGC) / minArcSelf);
+            }
+            return 1.0;
+          });
+          const totalWeight = weights.reduce((a, b) => a + b, 0);
+          let anglePos = angleStart;
+          node.children.forEach((child, i) => {
+            const childSpan = arcSpan * weights[i] / totalWeight;
+            layout(child, `${id}-${i}`, depth + 1, id, anglePos, anglePos + childSpan);
+            anglePos += childSpan;
+          });
+        }
       }
     }
 
     layout(data, "0", 0, null, 0, 2 * Math.PI);
     return { nodes, links };
-  }, [data, expanded]);
+  }, [data, expanded, layoutVersion]);
 
   const nodeMap = useMemo(() => {
     const m = new Map<string, LayoutNode>();
@@ -368,14 +436,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     [data, dimensions]
   );
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent, orgNode: OrgNode, effectiveScore: number) => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top, node: orgNode, effectiveScore });
-    },
-    []
-  );
 
   const handleZoomIn = useCallback(() => {
     const svg = d3.select(svgRef.current!);
@@ -423,10 +483,13 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     >
       <div
         style={{
-          padding: "12px 16px",
+          padding: "10px 16px",
           background: "#fff",
           borderBottom: "1px solid #eee",
           flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
         }}
       >
         <input
@@ -438,7 +501,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
             background: "#f5f5f8",
             border: "1px solid #e0e0e0",
             borderRadius: 8,
-            padding: "8px 14px",
+            padding: "7px 14px",
             color: "#1a1a2e",
             fontSize: 13,
             fontFamily: "Inter, system-ui, sans-serif",
@@ -446,6 +509,36 @@ export default function RadialGraph({ data }: RadialGraphProps) {
             width: 280,
           }}
         />
+
+        {/* Version switcher */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 500, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.04em" }}>
+            LAYOUT
+          </span>
+          <div style={{ display: "flex", background: "#f3f4f6", borderRadius: 7, padding: 2, gap: 2 }}>
+            {(["v1", "v2", "v3"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setLayoutVersion(v)}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: 5,
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "'IBM Plex Mono', monospace",
+                  transition: "all 0.15s",
+                  background: layoutVersion === v ? "#1a1a2e" : "transparent",
+                  color: layoutVersion === v ? "#fff" : "#6B7280",
+                  boxShadow: layoutVersion === v ? "0 1px 3px rgba(0,0,0,0.18)" : "none",
+                }}
+              >
+                {v.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div
@@ -465,6 +558,9 @@ export default function RadialGraph({ data }: RadialGraphProps) {
           }}
         >
           <defs>
+            <filter id="badge-shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="rgba(0,0,0,0.22)" />
+            </filter>
             {nodes.map((node) => {
               const r = NODE_RADIUS_BY_DEPTH[Math.min(node.depth, 4)];
               const clipId = clipIds.get(node.id)!;
@@ -524,13 +620,15 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 );
               })}
 
-              {nodes.map((node) => {
+              {/* Render hovered node last so it always paints on top */}
+              {[...nodes].sort((a, b) => (a.id === hoveredId ? 1 : b.id === hoveredId ? -1 : 0)).map((node) => {
                 const r = NODE_RADIUS_BY_DEPTH[Math.min(node.depth, 4)];
                 const es = effectiveScores.get(node.id) ?? node.orgNode.score;
                 const bg = scoreColor(es);
                 const dimmed = connectedIds && !connectedIds.has(node.id);
                 const isHighlighted = highlightId === node.id;
-                const hasHiddenChildren = node.childCount > 0 && !node.expanded;
+                const isHovered = node.id === hoveredId;
+                const hasHiddenChildren = node.childCount > 0;
                 const clipId = clipIds.get(node.id)!;
                 const avatarUrl = getAvatarUrl(node.orgNode.name);
                 const isTeamAvg = viewMode === "team-average" && node.childCount > 0;
@@ -544,9 +642,11 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       cursor: node.childCount > 0 ? "pointer" : "default",
                     }}
                     onClick={(e) => handleNodeClick(e, node.id)}
-                    onMouseEnter={() => setHoveredId(node.id)}
+                    onMouseEnter={() => {
+                      setHoveredId(node.id);
+                      setTooltip({ nodeX: node.x, nodeY: node.y, nodeR: r, node: node.orgNode, effectiveScore: es });
+                    }}
                     onMouseLeave={() => { setHoveredId(null); setTooltip(null); }}
-                    onMouseMove={(e) => handleMouseMove(e, node.orgNode, es)}
                   >
                     {isHighlighted && (
                       <>
@@ -587,23 +687,24 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       onError={(e) => { (e.target as SVGImageElement).setAttribute("href", getAvatarFallback(node.orgNode.name)); }}
                     />
 
-                    {/* Badge for hidden children count */}
+                    {/* Badge for children count */}
                     {hasHiddenChildren && showColorBadge && (
                       <>
                         <circle
-                          cx={node.x + r * 0.7} cy={node.y - r * 0.7} r={9}
-                          fill={bg} stroke="#fff" strokeWidth={2}
+                          cx={node.x + r * 0.7} cy={node.y - r * 0.7} r={8}
+                          fill={isTeamAvg ? bg : "#6B7280"} stroke="#fff" strokeWidth={2}
                         />
                         <text
                           x={node.x + r * 0.7} y={node.y - r * 0.7}
                           textAnchor="middle" dominantBaseline="central"
-                          fill="#fff" fontSize={8} fontWeight={700}
+                          fill="#fff" fontSize={9} fontWeight={700}
                           fontFamily="Inter, system-ui, sans-serif" pointerEvents="none"
                         >
                           {node.childCount}
                         </text>
                       </>
                     )}
+
                   </g>
                 );
               })}
@@ -743,37 +844,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
 
               <div style={{ height: 1, background: "#F3F4F6", margin: "0 13px" }} />
 
-              {/* 3. Node Config */}
-              <div style={{ padding: SECTION_PAD }}>
-                <div style={sectionLabel}>Node Config</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: GAP }}>
-                  {([
-                    { label: "Color Border", value: showColorBorder, toggle: () => setShowColorBorder(v => !v) },
-                    { label: "Color Badge",  value: showColorBadge,  toggle: () => setShowColorBadge(v  => !v) },
-                  ]).map(({ label, value, toggle }) => (
-                    <div key={label} onClick={toggle} style={rowStyle(value) as React.CSSProperties}>
-                      <span>{label}</span>
-                      {/* Toggle pill */}
-                      <div style={{
-                        width: 28, height: 16, borderRadius: 8, flexShrink: 0,
-                        background: value ? ACCENT : "#D1D5DB",
-                        position: "relative", transition: "background 0.2s",
-                      }}>
-                        <div style={{
-                          position: "absolute", top: 2,
-                          left: value ? 14 : 2, width: 12, height: 12,
-                          borderRadius: "50%", background: "#fff",
-                          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                          transition: "left 0.2s",
-                        }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ height: 1, background: "#F3F4F6", margin: "0 13px" }} />
-
               {/* 4. View Mode */}
               <div style={{ padding: SECTION_PAD }}>
                 <div style={sectionLabel}>View Mode</div>
@@ -818,7 +888,9 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                         boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
                         fontFamily: "Inter, system-ui, sans-serif",
                       }}>
-                        Scores are normalized from the selected performance cycle. Manager averages include only scored direct reports.
+                        {viewMode === "individual"
+                          ? "Scores are normalized from the selected performance cycle."
+                          : "Manager averages include only scored direct reports."}
                       </div>
                     )}
                   </div>
@@ -827,7 +899,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                   { color: "#22C55E", label: "High",    range: ">66%"   },
                   { color: "#F59E0B", label: "Medium",  range: "33–66%" },
                   { color: "#EF4444", label: "Low",     range: "<33%"   },
-                  { color: "#D1D5DB", label: "No Data", range: ""       },
+                  { color: "#D1D5DB", label: "N/A",     range: ""       },
                 ].map(item => (
                   <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
                     <div style={{
@@ -989,21 +1061,28 @@ export default function RadialGraph({ data }: RadialGraphProps) {
 
         {tooltip && (() => {
           const es = tooltip.effectiveScore;
-          const arc = 2 * Math.PI * 23; // circumference for r=23
+          const arc = 2 * Math.PI * 23;
+          // Compute node center in screen space (relative to canvas container)
+          const screenX = transform.x + transform.k * (tooltip.nodeX + dimensions.width / 2);
+          const screenY = transform.y + transform.k * (tooltip.nodeY + dimensions.height / 2);
+          const popupW = 232;
+          const gap = tooltip.nodeR * transform.k + 10;
+          const left = Math.max(10, Math.min(screenX - popupW / 2, dimensions.width - popupW - 10));
+          const top = Math.min(screenY + gap, dimensions.height - 10);
           return (
             <div
               style={{
                 position: "absolute",
-                left: Math.min(tooltip.x + 18, dimensions.width - 248),
-                top: Math.max(8, Math.min(tooltip.y - 16, dimensions.height - 270)),
+                left,
+                top,
                 pointerEvents: "none",
                 zIndex: 200,
                 animation: "tooltipPop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both",
-                transformOrigin: "top left",
+                transformOrigin: "top center",
               }}
             >
               <div style={{
-                width: 232,
+                width: popupW,
                 background: "#ffffff",
                 border: `1px solid rgba(0,0,0,0.08)`,
                 borderRadius: 16,
@@ -1021,7 +1100,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                   background: `linear-gradient(90deg, ${scoreColor(es)} 0%, ${scoreRgba(es, 0.15)} 100%)`,
                 }} />
 
-                <div style={{ padding: "14px 16px 16px" }}>
+                <div style={{ padding: "14px 16px 12px" }}>
                   {/* Avatar + arc + name */}
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
                     <div style={{ position: "relative", width: 46, height: 46, flexShrink: 0 }}>
@@ -1064,15 +1143,15 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                   </div>
 
                   {/* Stat chips */}
-                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                     {[
                       {
-                        label: viewMode === "team-average" && tooltip.node.children ? "Team Avg" : "Score",
+                        label: viewMode === "team-average" && tooltip.node.children ? "Team Avg" : "Rating",
                         value: `${(es * 100).toFixed(0)}%`,
                         color: scoreColor(es),
                       },
                       {
-                        label: "Headcount",
+                        label: "Reports",
                         value: String(getHeadcount(tooltip.node)),
                         color: "#111827",
                       },
@@ -1102,63 +1181,23 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                     ))}
                   </div>
 
-                  {/* Cycle history mini-bars */}
+                  {/* Ctrl+click hint */}
                   <div style={{
-                    background: "#F9FAFB",
-                    borderRadius: 10,
-                    padding: "9px 10px",
-                    border: "1px solid #F3F4F6",
+                    display: "flex", alignItems: "center", gap: 5,
+                    borderTop: "1px solid #F3F4F6", paddingTop: 10,
                   }}>
-                    <div style={{
-                      fontSize: 9, fontWeight: 600, color: "#9CA3AF",
-                      textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 9,
-                      fontFamily: "'IBM Plex Mono', monospace",
-                    }}>
-                      Cycle History
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      {PERFORMANCE_CYCLES.map((cycle) => {
-                        const s = tooltip.node.cycleScores[cycle.id] ?? 0;
-                        const isSelected = cycle.id === selectedCycle;
-                        return (
-                          <div key={cycle.id} style={{
-                            display: "flex", alignItems: "center", gap: 8,
-                            padding: isSelected ? "5px 7px" : "1px 7px",
-                            borderRadius: 7,
-                            background: isSelected ? `${scoreRgba(s, 0.08)}` : "transparent",
-                            border: isSelected ? `1px solid ${scoreRgba(s, 0.2)}` : "1px solid transparent",
-                            margin: "0 -7px",
-                          }}>
-                            <div style={{
-                              fontSize: 9, width: 48, flexShrink: 0,
-                              fontFamily: "'IBM Plex Mono', monospace",
-                              fontWeight: isSelected ? 600 : 500,
-                              color: isSelected ? "#374151" : "#9CA3AF",
-                              whiteSpace: "nowrap",
-                            }}>
-                              {cycle.label.replace(" Review", "")}
-                            </div>
-                            <div style={{ flex: 1, height: isSelected ? 5 : 4, borderRadius: 2, background: "#E5E7EB" }}>
-                              <div style={{
-                                height: "100%", borderRadius: 2,
-                                width: `${s * 100}%`,
-                                background: scoreColor(s),
-                              }} />
-                            </div>
-                            <div style={{
-                              fontSize: isSelected ? 10 : 9,
-                              color: scoreColor(s),
-                              width: 30, textAlign: "right",
-                              fontFamily: "'IBM Plex Mono', monospace",
-                              fontWeight: isSelected ? 700 : 600,
-                              flexShrink: 0,
-                            }}>
-                              {(s * 100).toFixed(0)}%
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <kbd style={{
+                      display: "inline-flex", alignItems: "center",
+                      padding: "2px 6px", fontSize: 9,
+                      fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600,
+                      color: "#9CA3AF",
+                      background: "#F9FAFB",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 4, lineHeight: 1.4, flexShrink: 0,
+                    }}>Ctrl</kbd>
+                    <span style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif" }}>
+                      + click this node to view details
+                    </span>
                   </div>
                 </div>
               </div>
