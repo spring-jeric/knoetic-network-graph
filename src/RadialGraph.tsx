@@ -461,6 +461,14 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     return map;
   }, [nodes]);
 
+  // Stable depth-based sort — never changes on hover, so no DOM reordering occurs.
+  // DOM reordering was the root cause of the stuck-hover bug: when the sort changed
+  // on hoveredId update, the browser fired spurious mouseLeave/mouseEnter events.
+  const sortedNodes = useMemo(
+    () => [...nodes].sort((a, b) => a.depth - b.depth),
+    [nodes]
+  );
+
   return (
     <>
     <style>{`
@@ -620,14 +628,14 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 );
               })}
 
-              {/* Render hovered node last so it always paints on top */}
-              {[...nodes].sort((a, b) => (a.id === hoveredId ? 1 : b.id === hoveredId ? -1 : 0)).map((node) => {
+              {/* Stable depth-sort — DOM order never changes on hover (fixes stuck-hover bug).
+                  Hovered node is painted on top via a separate overlay below. */}
+              {sortedNodes.map((node) => {
                 const r = NODE_RADIUS_BY_DEPTH[Math.min(node.depth, 4)];
                 const es = effectiveScores.get(node.id) ?? node.orgNode.score;
                 const bg = scoreColor(es);
                 const dimmed = connectedIds && !connectedIds.has(node.id);
                 const isHighlighted = highlightId === node.id;
-                const isHovered = node.id === hoveredId;
                 const hasHiddenChildren = node.childCount > 0;
                 const clipId = clipIds.get(node.id)!;
                 const avatarUrl = getAvatarUrl(node.orgNode.name);
@@ -649,12 +657,10 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                     onMouseLeave={() => { setHoveredId(null); setTooltip(null); }}
                   >
                     {isHighlighted && (
-                      <>
-                        <circle cx={node.x} cy={node.y} r={r + 8} fill="none" stroke={bg} strokeWidth={2}>
-                          <animate attributeName="r" from={r + 4} to={r + 20} dur="1.5s" repeatCount="indefinite" />
-                          <animate attributeName="opacity" from="0.8" to="0" dur="1.5s" repeatCount="indefinite" />
-                        </circle>
-                      </>
+                      <circle cx={node.x} cy={node.y} r={r + 8} fill="none" stroke={bg} strokeWidth={2}>
+                        <animate attributeName="r" from={r + 4} to={r + 20} dur="1.5s" repeatCount="indefinite" />
+                        <animate attributeName="opacity" from="0.8" to="0" dur="1.5s" repeatCount="indefinite" />
+                      </circle>
                     )}
 
                     {/* Heatmap glow */}
@@ -704,10 +710,56 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                         </text>
                       </>
                     )}
-
                   </g>
                 );
               })}
+
+              {/* Hover overlay — visual-only copy of the hovered node painted last
+                  so it's always on top. pointerEvents="none" so events go to the
+                  real <g> beneath, which never moved (no DOM reorder). */}
+              {(() => {
+                const node = hoveredId ? nodeMap.get(hoveredId) : null;
+                if (!node) return null;
+                const r = NODE_RADIUS_BY_DEPTH[Math.min(node.depth, 4)];
+                const es = effectiveScores.get(node.id) ?? node.orgNode.score;
+                const bg = scoreColor(es);
+                const clipId = clipIds.get(node.id)!;
+                const avatarUrl = getAvatarUrl(node.orgNode.name);
+                const isTeamAvg = viewMode === "team-average" && node.childCount > 0;
+                return (
+                  <g pointerEvents="none">
+                    <circle cx={node.x} cy={node.y} r={r + 6} fill={bg} filter={`url(#glow-${clipId})`} />
+                    <circle
+                      cx={node.x} cy={node.y} r={r} fill="#fff"
+                      stroke={showColorBorder ? bg : "rgba(0,0,0,0.10)"}
+                      strokeWidth={showColorBorder ? 1.5 : 1}
+                      strokeDasharray={isTeamAvg && showColorBorder ? `${Math.max(3, r * 0.3)} ${Math.max(2, r * 0.2)}` : "none"}
+                    />
+                    <image
+                      href={avatarUrl}
+                      x={node.x - (r - 3)} y={node.y - (r - 3)}
+                      width={(r - 3) * 2} height={(r - 3) * 2}
+                      clipPath={`url(#${clipId})`}
+                      preserveAspectRatio="xMidYMid slice"
+                      onError={(e) => { (e.target as SVGImageElement).setAttribute("href", getAvatarFallback(node.orgNode.name)); }}
+                    />
+                    {node.childCount > 0 && showColorBadge && (
+                      <>
+                        <circle
+                          cx={node.x + r * 0.7} cy={node.y - r * 0.7} r={8}
+                          fill={isTeamAvg ? bg : "#6B7280"} stroke="#fff" strokeWidth={2}
+                        />
+                        <text
+                          x={node.x + r * 0.7} y={node.y - r * 0.7}
+                          textAnchor="middle" dominantBaseline="central"
+                          fill="#fff" fontSize={9} fontWeight={700}
+                          fontFamily="Inter, system-ui, sans-serif"
+                        >{node.childCount}</text>
+                      </>
+                    )}
+                  </g>
+                );
+              })()}
             </g>
           </g>
         </svg>
