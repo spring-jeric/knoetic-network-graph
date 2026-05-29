@@ -111,14 +111,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
   const [tooltip, setTooltip] = useState<{ nodeX: number; nodeY: number; nodeR: number; node: OrgNode; effectiveScore: number } | null>(null);
   const [search, setSearch] = useState("");
   const [highlightId, setHighlightId] = useState<string | null>(null);
-  // currentTransform is kept in a ref so D3 can update the SVG directly without
-  // triggering a React re-render on every zoom/pan frame (which was ~2000 elements/frame).
-  const currentTransform = useRef<d3.ZoomTransform>(d3.zoomIdentity);
-  // cullTransform is the debounced version used by React for viewport culling.
-  const [cullTransform, setCullTransform] = useState<d3.ZoomTransform>(d3.zoomIdentity);
-  const cullTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Ref for the SVG <g> that D3 controls — transform applied directly to DOM, not via React.
-  const zoomGRef = useRef<SVGGElement>(null);
+  const [transform, setTransform] = useState<d3.ZoomTransform>(d3.zoomIdentity);
   const [boxZoomActive, setBoxZoomActive] = useState(false);
   const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
   const isDraggingBox = useRef(false);
@@ -161,11 +154,10 @@ export default function RadialGraph({ data }: RadialGraphProps) {
   }, [boxZoomActive]);
 
   const handleBoxMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDraggingBox.current) return;
+    if (!isDraggingBox.current || !selectionBox) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    // Functional update — no dependency on selectionBox state, no stale closure
     setSelectionBox((prev) => prev ? { ...prev, endX: e.clientX - rect.left, endY: e.clientY - rect.top } : null);
-  }, []); // stable: uses ref + functional setState
+  }, [selectionBox]);
 
   const handleBoxMouseUp = useCallback(() => {
     if (!isDraggingBox.current || !selectionBox || !zoomRef.current || !svgRef.current) {
@@ -191,9 +183,8 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     const cx = (x0 + x1) / 2;
     const cy = (y0 + y1) / 2;
 
-    const t = currentTransform.current;
-    const sceneCx = (cx - t.x) / t.k;
-    const sceneCy = (cy - t.y) / t.k;
+    const sceneCx = (cx - transform.x) / transform.k;
+    const sceneCy = (cy - transform.y) / transform.k;
     const clampedScale = Math.min(3, Math.max(0.3, scale));
     const finalTransform = d3.zoomIdentity
       .translate(dimensions.width / 2 - sceneCx * clampedScale, dimensions.height / 2 - sceneCy * clampedScale)
@@ -203,7 +194,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
 
     setSelectionBox(null);
     setBoxZoomActive(false);
-  }, [selectionBox, dimensions]);
+  }, [selectionBox, dimensions, transform]);
 
   useEffect(() => {
     const ro = new ResizeObserver((entries) => {
@@ -271,23 +262,15 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     const links: LayoutLink[] = [];
 
     // V3 helper: minimum arc the entire subtree rooted at `node` needs so no
-    // node in it visually stacks with its siblings. Cached to avoid recomputing
-    // overlapping subtrees during the layout pass.
-    const subtreeMinArcCache = new Map<string, number>();
+    // node in it visually stacks with its siblings.
     function subtreeMinArc(node: OrgNode, id: string, depth: number): number {
-      const cached = subtreeMinArcCache.get(id);
-      if (cached !== undefined) return cached;
       const r = depth * RING_RADIUS;
       const nr = NODE_RADIUS_BY_DEPTH[Math.min(depth, NODE_RADIUS_BY_DEPTH.length - 1)];
       const selfMin = r > 0 ? (2 * nr * 1.8) / r : 0;
-      let result = selfMin;
-      if (expanded.has(id) && node.children && node.children.length > 0) {
-        const childrenMin = node.children.reduce((sum, child, i) =>
-          sum + subtreeMinArc(child, `${id}-${i}`, depth + 1), 0);
-        result = Math.max(selfMin, childrenMin);
-      }
-      subtreeMinArcCache.set(id, result);
-      return result;
+      if (!expanded.has(id) || !node.children || node.children.length === 0) return selfMin;
+      const childrenMin = node.children.reduce((sum, child, i) =>
+        sum + subtreeMinArc(child, `${id}-${i}`, depth + 1), 0);
+      return Math.max(selfMin, childrenMin);
     }
 
     function layout(
@@ -378,19 +361,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     return m;
   }, [nodes]);
 
-  // Pre-built children lookup — O(n) once, avoids O(n²) scan in addDescendants
-  const childrenMap = useMemo(() => {
-    const m = new Map<string, string[]>();
-    nodes.forEach((n) => {
-      if (n.parentId) {
-        const arr = m.get(n.parentId) ?? [];
-        arr.push(n.id);
-        m.set(n.parentId, arr);
-      }
-    });
-    return m;
-  }, [nodes]);
-
   const connectedIds = useMemo(() => {
     if (!hoveredId) return null;
     const ids = new Set<string>();
@@ -400,29 +370,18 @@ export default function RadialGraph({ data }: RadialGraphProps) {
       if (node?.parentId) { ids.add(node.parentId); addAncestors(node.parentId); }
     }
     function addDescendants(id: string) {
-      const children = childrenMap.get(id) ?? [];
-      children.forEach((cid) => { ids.add(cid); addDescendants(cid); });
+      nodes.forEach((n) => { if (n.parentId === id) { ids.add(n.id); addDescendants(n.id); } });
     }
     addAncestors(hoveredId);
     addDescendants(hoveredId);
     return ids;
-  }, [hoveredId, nodeMap, childrenMap]);
+  }, [hoveredId, nodeMap, nodes]);
 
   useEffect(() => {
     const svg = d3.select(svgRef.current!);
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
-      .on("zoom", (event) => {
-        // 1. Update ref immediately (no React re-render)
-        currentTransform.current = event.transform;
-        // 2. Apply transform directly to the DOM — bypasses React reconciler entirely
-        if (zoomGRef.current) {
-          zoomGRef.current.setAttribute("transform", event.transform.toString());
-        }
-        // 3. Debounced cull update — triggers a re-render only after panning stops
-        if (cullTimerRef.current) clearTimeout(cullTimerRef.current);
-        cullTimerRef.current = setTimeout(() => setCullTransform(event.transform), 120);
-      });
+      .on("zoom", (event) => setTransform(event.transform));
     zoomRef.current = zoom;
     svg.call(zoom as any);
     return () => { svg.on(".zoom", null); };
@@ -501,60 +460,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     nodes.forEach((n) => map.set(n.id, `clip-${n.id.replace(/[^a-z0-9]/gi, '-')}`));
     return map;
   }, [nodes]);
-
-  // Avatar URLs hashed once per node list, not on every render
-  const avatarUrls = useMemo(() => {
-    const map = new Map<string, string>();
-    nodes.forEach((n) => map.set(n.id, getAvatarUrl(n.orgNode.name)));
-    return map;
-  }, [nodes]);
-
-  // Stable depth-sorted list — memoized so sort doesn't run on every render
-  const sortedNodes = useMemo(
-    () => [...nodes].sort((a, b) => a.depth - b.depth),
-    [nodes]
-  );
-
-  // ─── Performance flags ─────────────────────────────────────────────────────
-  // With ~2000 nodes in "show all", SVG blur filters and CSS transitions are
-  // catastrophically expensive. Disable them above a threshold.
-  const isLargeGraph = nodes.length > 100;
-
-  // ─── Viewport culling ──────────────────────────────────────────────────────
-  // Only render nodes whose center is within the visible canvas area.
-  // Uses the debounced cullTransform (not the live one) so the cull set only
-  // recomputes after the user stops panning, not on every animation frame.
-  const CULL_MARGIN = 120; // px — extra buffer so nodes pop in before they're fully visible
-  const visibleNodeIds = useMemo(() => {
-    if (!isLargeGraph) return null; // small graphs: render everything
-    const { x: tx, y: ty, k } = cullTransform;
-    const cxOff = dimensions.width / 2;
-    const cyOff = dimensions.height / 2;
-    const s = new Set<string>();
-    nodes.forEach((n) => {
-      const sx = tx + k * (n.x + cxOff);
-      const sy = ty + k * (n.y + cyOff);
-      if (
-        sx > -CULL_MARGIN && sx < dimensions.width  + CULL_MARGIN &&
-        sy > -CULL_MARGIN && sy < dimensions.height + CULL_MARGIN
-      ) {
-        s.add(n.id);
-      }
-    });
-    return s;
-  }, [nodes, cullTransform, dimensions, isLargeGraph]);
-
-  // Pre-filtered node + link lists for the renderer
-  const visibleNodes = useMemo(
-    () => visibleNodeIds ? sortedNodes.filter((n) => visibleNodeIds.has(n.id)) : sortedNodes,
-    [sortedNodes, visibleNodeIds]
-  );
-  const visibleLinks = useMemo(
-    () => visibleNodeIds
-      ? links.filter((l) => visibleNodeIds.has(l.sourceId) || visibleNodeIds.has(l.targetId))
-      : links,
-    [links, visibleNodeIds]
-  );
 
   return (
     <>
@@ -653,52 +558,37 @@ export default function RadialGraph({ data }: RadialGraphProps) {
           }}
         >
           <defs>
-            <filter id="badge-shadow" x="-60%" y="-60%" width="220%" height="220%">
-              <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="rgba(0,0,0,0.35)" />
+            <filter id="badge-shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="rgba(0,0,0,0.22)" />
             </filter>
-            {/* Badge gradient fills — shared, not per-node */}
-            {[
-              { id: "badge-grad-gray",  c0: "#9CA3AF", c1: "#4B5563" },
-              { id: "badge-grad-red",   c0: "#F87171", c1: "#DC2626" },
-              { id: "badge-grad-amber", c0: "#FCD34D", c1: "#D97706" },
-              { id: "badge-grad-green", c0: "#4ADE80", c1: "#16A34A" },
-            ].map(({ id, c0, c1 }) => (
-              <radialGradient key={id} id={id} cx="35%" cy="30%" r="65%">
-                <stop offset="0%" stopColor={c0} />
-                <stop offset="100%" stopColor={c1} />
-              </radialGradient>
-            ))}
-            {/* 4 shared glow filters instead of one per node — huge defs savings */}
-            {[
-              { id: "glow-red",   values: "0 0 0 0 0.937  0 0 0 0 0.267  0 0 0 0 0.267  0 0 0 0.8 0" },
-              { id: "glow-amber", values: "0 0 0 0 0.961  0 0 0 0 0.620  0 0 0 0 0.043  0 0 0 0.8 0" },
-              { id: "glow-gray",  values: "0 0 0 0 0.820  0 0 0 0 0.835  0 0 0 0 0.859  0 0 0 0.8 0" },
-              { id: "glow-green", values: "0 0 0 0 0.133  0 0 0 0 0.773  0 0 0 0 0.369  0 0 0 0.8 0" },
-            ].map(({ id, values }) => (
-              <filter key={id} id={id} x="-200%" y="-200%" width="500%" height="500%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
-                <feColorMatrix type="matrix" values={values} />
-              </filter>
-            ))}
-            {/* Clip paths — only for nodes that will render an avatar */}
             {nodes.map((node) => {
-              // In large graphs, avatars are only shown at depth ≤ 2; skip the rest.
-              if (isLargeGraph && node.depth > 2) return null;
               const r = NODE_RADIUS_BY_DEPTH[Math.min(node.depth, 4)];
               const clipId = clipIds.get(node.id)!;
+              const es = effectiveScores.get(node.id) ?? node.orgNode.score;
+              const bg = scoreColor(es);
               return (
-                <clipPath key={`clip-${node.id}`} id={clipId}>
-                  <circle cx={node.x} cy={node.y} r={r - 3} />
-                </clipPath>
+                <React.Fragment key={`defs-${node.id}`}>
+                  <clipPath id={clipId}>
+                    <circle cx={node.x} cy={node.y} r={r - 3} />
+                  </clipPath>
+                  <filter id={`glow-${clipId}`} x="-200%" y="-200%" width="500%" height="500%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="20" />
+                    <feColorMatrix type="matrix" values={
+                      bg === "#EF4444" ? "0 0 0 0 0.937  0 0 0 0 0.267  0 0 0 0 0.267  0 0 0 0.8 0" :
+                      bg === "#F59E0B" ? "0 0 0 0 0.961  0 0 0 0 0.620  0 0 0 0 0.043  0 0 0 0.8 0" :
+                      bg === "#D1D5DB" ? "0 0 0 0 0.820  0 0 0 0 0.835  0 0 0 0 0.859  0 0 0 0.8 0" :
+                                         "0 0 0 0 0.133  0 0 0 0 0.773  0 0 0 0 0.369  0 0 0 0.8 0"
+                    } />
+                  </filter>
+                </React.Fragment>
               );
             })}
           </defs>
-          {/* zoomGRef: transform applied directly by D3 — no React re-render on zoom/pan */}
-          <g ref={zoomGRef}>
+          <g transform={`${transform}`}>
             <g transform={`translate(${dimensions.width / 2}, ${dimensions.height / 2})`}>
               {/* Ring guides removed */}
 
-              {visibleLinks.map((link) => {
+              {links.map((link) => {
                 const source = nodeMap.get(link.sourceId);
                 const target = nodeMap.get(link.targetId);
                 if (!source || !target) return null;
@@ -725,35 +615,30 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                     stroke={highlighted ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.08)"}
                     strokeWidth={highlighted ? 2 : 1}
                     opacity={dimmed ? 0.1 : 1}
-                    style={{ transition: isLargeGraph ? "none" : "opacity 0.3s" }}
+                    style={{ transition: "opacity 0.3s, stroke 0.3s" }}
                   />
                 );
               })}
 
-              {/* Deeper nodes render last → paint on top (stable sort, memoized + culled) */}
-              {visibleNodes.map((node) => {
+              {/* Render hovered node last so it always paints on top */}
+              {[...nodes].sort((a, b) => (a.id === hoveredId ? 1 : b.id === hoveredId ? -1 : 0)).map((node) => {
                 const r = NODE_RADIUS_BY_DEPTH[Math.min(node.depth, 4)];
                 const es = effectiveScores.get(node.id) ?? node.orgNode.score;
                 const bg = scoreColor(es);
-                const glowId = bg === "#EF4444" ? "glow-red" : bg === "#F59E0B" ? "glow-amber" : bg === "#D1D5DB" ? "glow-gray" : "glow-green";
                 const dimmed = connectedIds && !connectedIds.has(node.id);
                 const isHighlighted = highlightId === node.id;
+                const isHovered = node.id === hoveredId;
                 const hasHiddenChildren = node.childCount > 0;
                 const clipId = clipIds.get(node.id)!;
-                const avatarUrl = avatarUrls.get(node.id)!;
+                const avatarUrl = getAvatarUrl(node.orgNode.name);
                 const isTeamAvg = viewMode === "team-average" && node.childCount > 0;
-                // In large graphs: skip avatars for deep nodes (images are expensive)
-                // and skip glow (blur filters on 2000 nodes destroys the GPU)
-                const showAvatar = !isLargeGraph || node.depth <= 2;
-                const showGlow = !isLargeGraph;
 
                 return (
                   <g
                     key={node.id}
                     style={{
                       opacity: dimmed ? 0.2 : 1,
-                      // CSS transitions on 2000 elements simultaneously is catastrophic
-                      transition: isLargeGraph ? "none" : "opacity 0.3s",
+                      transition: "opacity 0.3s",
                       cursor: node.childCount > 0 ? "pointer" : "default",
                     }}
                     onClick={(e) => handleNodeClick(e, node.id)}
@@ -772,68 +657,53 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       </>
                     )}
 
-                    {/* Heatmap glow — skipped for large graphs (SVG blur is GPU-intensive) */}
-                    {showGlow && (
-                      <circle
-                        cx={node.x} cy={node.y} r={r + 6}
-                        fill={bg}
-                        filter={`url(#${glowId})`}
-                        pointerEvents="none"
-                      />
-                    )}
+                    {/* Heatmap glow */}
+                    <circle
+                      cx={node.x} cy={node.y} r={r + 6}
+                      fill={bg}
+                      filter={`url(#glow-${clipId})`}
+                      pointerEvents="none"
+                    />
 
                     {/* Colored ring */}
                     <circle
                       data-node-id={node.id}
                       cx={node.x} cy={node.y} r={r}
-                      fill={isLargeGraph && !showAvatar ? bg : "#fff"}
+                      fill="#fff"
                       stroke={showColorBorder ? bg : "rgba(0,0,0,0.10)"}
                       strokeWidth={showColorBorder ? 1.5 : 1}
                       strokeDasharray={isTeamAvg && showColorBorder ? `${Math.max(3, r * 0.3)} ${Math.max(2, r * 0.2)}` : "none"}
                     />
 
-                    {/* Avatar photo — skipped for deep nodes in large graphs */}
-                    {showAvatar && (
-                      <image
-                        href={avatarUrl}
-                        x={node.x - (r - 3)}
-                        y={node.y - (r - 3)}
-                        width={(r - 3) * 2}
-                        height={(r - 3) * 2}
-                        clipPath={`url(#${clipId})`}
-                        preserveAspectRatio="xMidYMid slice"
-                        onError={(e) => { (e.target as SVGImageElement).setAttribute("href", getAvatarFallback(node.orgNode.name)); }}
-                      />
-                    )}
+                    {/* Avatar photo */}
+                    <image
+                      href={avatarUrl}
+                      x={node.x - (r - 3)}
+                      y={node.y - (r - 3)}
+                      width={(r - 3) * 2}
+                      height={(r - 3) * 2}
+                      clipPath={`url(#${clipId})`}
+                      preserveAspectRatio="xMidYMid slice"
+                      onError={(e) => { (e.target as SVGImageElement).setAttribute("href", getAvatarFallback(node.orgNode.name)); }}
+                    />
 
                     {/* Badge for children count */}
-                    {hasHiddenChildren && showColorBadge && (() => {
-                      const bx = node.x + r * 0.7;
-                      const by = node.y - r * 0.7;
-                      // Pick gradient id based on performance color
-                      const gradId = !isTeamAvg ? "badge-grad-gray"
-                        : bg === "#EF4444" ? "badge-grad-red"
-                        : bg === "#F59E0B" ? "badge-grad-amber"
-                        : "badge-grad-green";
-                      return (
-                        <g filter={isLargeGraph ? undefined : "url(#badge-shadow)"}>
-                          {/* Base pill */}
-                          <circle cx={bx} cy={by} r={8} fill={`url(#${gradId})`} stroke="rgba(255,255,255,0.9)" strokeWidth={1.5} />
-                          {/* Glassy top-left sheen */}
-                          <ellipse cx={bx - 1.8} cy={by - 2.8} rx={3.2} ry={2} fill="rgba(255,255,255,0.28)" />
-                          {/* Count label */}
-                          <text
-                            x={bx} y={by}
-                            textAnchor="middle" dominantBaseline="central"
-                            fill="#fff" fontSize={8.5} fontWeight={800}
-                            fontFamily="Inter, system-ui, sans-serif" pointerEvents="none"
-                            style={{ textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}
-                          >
-                            {node.childCount}
-                          </text>
-                        </g>
-                      );
-                    })()}
+                    {hasHiddenChildren && showColorBadge && (
+                      <>
+                        <circle
+                          cx={node.x + r * 0.7} cy={node.y - r * 0.7} r={8}
+                          fill={isTeamAvg ? bg : "#6B7280"} stroke="#fff" strokeWidth={2}
+                        />
+                        <text
+                          x={node.x + r * 0.7} y={node.y - r * 0.7}
+                          textAnchor="middle" dominantBaseline="central"
+                          fill="#fff" fontSize={9} fontWeight={700}
+                          fontFamily="Inter, system-ui, sans-serif" pointerEvents="none"
+                        >
+                          {node.childCount}
+                        </text>
+                      </>
+                    )}
 
                   </g>
                 );
@@ -1192,13 +1062,11 @@ export default function RadialGraph({ data }: RadialGraphProps) {
         {tooltip && (() => {
           const es = tooltip.effectiveScore;
           const arc = 2 * Math.PI * 23;
-          // Compute node center in screen space (relative to canvas container).
-          // Read from ref — currentTransform is always up-to-date (no stale closure).
-          const t = currentTransform.current;
-          const screenX = t.x + t.k * (tooltip.nodeX + dimensions.width / 2);
-          const screenY = t.y + t.k * (tooltip.nodeY + dimensions.height / 2);
+          // Compute node center in screen space (relative to canvas container)
+          const screenX = transform.x + transform.k * (tooltip.nodeX + dimensions.width / 2);
+          const screenY = transform.y + transform.k * (tooltip.nodeY + dimensions.height / 2);
           const popupW = 232;
-          const gap = tooltip.nodeR * t.k + 10;
+          const gap = tooltip.nodeR * transform.k + 10;
           const left = Math.max(10, Math.min(screenX - popupW / 2, dimensions.width - popupW - 10));
           const top = Math.min(screenY + gap, dimensions.height - 10);
           return (
