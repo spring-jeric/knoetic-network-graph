@@ -1093,7 +1093,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 {/* Ctrl / Alt + click */}
                 {[
                   { modifier: "Ctrl", desc: "on each employee node to view details" },
-                  { modifier: "Alt",  desc: "on each employee node to view details" },
                 ].map(({ modifier, desc }) => (
                   <div key={modifier} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
