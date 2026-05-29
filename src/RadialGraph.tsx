@@ -125,7 +125,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
   const [selectedCycle, setSelectedCycle] = useState(PERFORMANCE_CYCLES[0].id);
   const [viewMode, setViewMode] = useState<ViewMode>("individual");
   const [expansionDepth, setExpansionDepth] = useState<ExpansionDepth>(1);
-  const [layoutVersion, setLayoutVersion] = useState<"v1" | "v2" | "v3">("v1");
   const [legendTooltip, setLegendTooltip] = useState(false);
   const [showColorBorder, setShowColorBorder] = useState(true);
   const [showColorBadge, setShowColorBadge] = useState(true);
@@ -300,70 +299,33 @@ export default function RadialGraph({ data }: RadialGraphProps) {
         const arcSpan = angleEnd - angleStart;
         const n = node.children.length;
 
-        if (layoutVersion === "v1") {
-          // V1: perfectly equal arc per sibling.
-          const slotSize = arcSpan / n;
-          node.children.forEach((child, i) => {
-            const start = angleStart + slotSize * i;
-            layout(child, `${id}-${i}`, depth + 1, id, start, start + slotSize);
-          });
-        } else if (layoutVersion === "v3") {
-          // V3: weight each child by its entire subtree's minimum arc requirement.
-          // A single fully-expanded branch claims exactly what it needs at every depth
-          // level → zero stacking anywhere in that branch. When many branches are all
-          // expanded (L3 / Show All) every weight grows simultaneously → arc per child
-          // stays small → natural stacking, same as V1.
-          const r1 = (depth + 1) * RING_RADIUS;
-          const nr1 = NODE_RADIUS_BY_DEPTH[Math.min(depth + 1, NODE_RADIUS_BY_DEPTH.length - 1)];
-          const minArcSelf = r1 > 0 ? (2 * nr1 * 1.8) / r1 : 1;
+        // Weight each child by its entire subtree's minimum arc requirement.
+        // A single fully-expanded branch claims exactly what it needs at every depth
+        // level → zero stacking anywhere in that branch. When many branches are all
+        // expanded (L3 / Show All) every weight grows simultaneously → arc per child
+        // stays small → natural stacking.
+        const r1 = (depth + 1) * RING_RADIUS;
+        const nr1 = NODE_RADIUS_BY_DEPTH[Math.min(depth + 1, NODE_RADIUS_BY_DEPTH.length - 1)];
+        const minArcSelf = r1 > 0 ? (2 * nr1 * 1.8) / r1 : 1;
 
-          const weights = node.children.map((child, i) => {
-            const childId = `${id}-${i}`;
-            const need = subtreeMinArc(child, childId, depth + 1);
-            return Math.max(1.0, need / minArcSelf);
-          });
-          const totalWeight = weights.reduce((a, b) => a + b, 0);
-          let anglePos = angleStart;
-          node.children.forEach((child, i) => {
-            const childSpan = arcSpan * weights[i] / totalWeight;
-            layout(child, `${id}-${i}`, depth + 1, id, anglePos, anglePos + childSpan);
-            anglePos += childSpan;
-          });
-        } else {
-          // V2: weight each expanded child by (n_grandchildren × minArcPerGC) / minArcSelf.
-          // This gives the parent exactly the arc it needs so grandchildren won't stack,
-          // while unexpanded siblings stay at weight 1.0.
-          // When many nodes are all expanded, weights converge → near-equal → natural stacking.
-          const childDepth = depth + 1;
-          const gcDepth = depth + 2;
-          const r1 = childDepth * RING_RADIUS;
-          const r2 = gcDepth * RING_RADIUS;
-          const nr1 = NODE_RADIUS_BY_DEPTH[Math.min(childDepth, NODE_RADIUS_BY_DEPTH.length - 1)];
-          const nr2 = NODE_RADIUS_BY_DEPTH[Math.min(gcDepth, NODE_RADIUS_BY_DEPTH.length - 1)];
-          const minArcSelf = r1 > 0 ? (2 * nr1 * 1.8) / r1 : 1;
-          const minArcGC   = r2 > 0 ? (2 * nr2 * 1.8) / r2 : 0;
-
-          const weights = node.children.map((child, i) => {
-            const childId = `${id}-${i}`;
-            if (expanded.has(childId) && (child.children?.length ?? 0) > 0) {
-              return Math.max(1.0, (child.children!.length * minArcGC) / minArcSelf);
-            }
-            return 1.0;
-          });
-          const totalWeight = weights.reduce((a, b) => a + b, 0);
-          let anglePos = angleStart;
-          node.children.forEach((child, i) => {
-            const childSpan = arcSpan * weights[i] / totalWeight;
-            layout(child, `${id}-${i}`, depth + 1, id, anglePos, anglePos + childSpan);
-            anglePos += childSpan;
-          });
-        }
+        const weights = node.children.map((child, i) => {
+          const childId = `${id}-${i}`;
+          const need = subtreeMinArc(child, childId, depth + 1);
+          return Math.max(1.0, need / minArcSelf);
+        });
+        const totalWeight = weights.reduce((a, b) => a + b, 0);
+        let anglePos = angleStart;
+        node.children.forEach((child, i) => {
+          const childSpan = arcSpan * weights[i] / totalWeight;
+          layout(child, `${id}-${i}`, depth + 1, id, anglePos, anglePos + childSpan);
+          anglePos += childSpan;
+        });
       }
     }
 
     layout(data, "0", 0, null, 0, 2 * Math.PI);
     return { nodes, links };
-  }, [data, expanded, layoutVersion]);
+  }, [data, expanded]);
 
   const nodeMap = useMemo(() => {
     const m = new Map<string, LayoutNode>();
@@ -528,35 +490,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
           }}
         />
 
-        {/* Version switcher */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 500, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.04em" }}>
-            LAYOUT
-          </span>
-          <div style={{ display: "flex", background: "#f3f4f6", borderRadius: 7, padding: 2, gap: 2 }}>
-            {(["v1", "v2", "v3"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setLayoutVersion(v)}
-                style={{
-                  padding: "4px 12px",
-                  borderRadius: 5,
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  fontFamily: "'IBM Plex Mono', monospace",
-                  transition: "all 0.15s",
-                  background: layoutVersion === v ? "#1a1a2e" : "transparent",
-                  color: layoutVersion === v ? "#fff" : "#6B7280",
-                  boxShadow: layoutVersion === v ? "0 1px 3px rgba(0,0,0,0.18)" : "none",
-                }}
-              >
-                {v.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div
