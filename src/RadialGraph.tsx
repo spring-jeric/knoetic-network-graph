@@ -1114,18 +1114,21 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 ))}
 
                 {/* Z — box zoom */}
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
-                  <kbd style={{
-                    display: "inline-flex", alignItems: "center", flexShrink: 0,
-                    padding: "3px 8px", fontSize: 10,
-                    fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600,
-                    color: "#3B82F6", background: "rgba(59,130,246,0.07)",
-                    border: "1px solid rgba(59,130,246,0.25)",
-                    borderRadius: 6, lineHeight: 1.3,
-                  }}>Z</kbd>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: "#374151", fontFamily: "Inter, system-ui, sans-serif", lineHeight: 1.5 }}>then draw a box</span>
-                    <span style={{ fontSize: 10, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif", lineHeight: 1.5 }}>to zoom into that area</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <kbd style={{
+                      display: "inline-flex", alignItems: "center",
+                      padding: "3px 8px", fontSize: 10,
+                      fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600,
+                      color: "#3B82F6", background: "rgba(59,130,246,0.07)",
+                      border: "1px solid rgba(59,130,246,0.25)",
+                      borderRadius: 6, lineHeight: 1.3,
+                    }}>Z</kbd>
+                    <span style={{ fontSize: 10, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif" }}>then</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "#374151", fontFamily: "Inter, system-ui, sans-serif" }}>draw a box</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#9CA3AF", lineHeight: 1.5, fontFamily: "Inter, system-ui, sans-serif", paddingLeft: 1 }}>
+                    to zoom into that area
                   </div>
                 </div>
 
