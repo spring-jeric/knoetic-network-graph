@@ -1273,7 +1273,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                         borderRadius: 4, lineHeight: 1.4, flexShrink: 0,
                       }}>Esc</kbd>
                       <span style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "Inter, system-ui, sans-serif" }}>
-                        dismiss to trace connections
+                        hide popup, keep highlight
                       </span>
                     </div>
                   </div>
