@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  ChevronDown, ChevronRight, Clock, VenetianMask,
+  ChevronDown, ChevronRight, History, VenetianMask,
   Zap, Sparkles, Bell, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 
@@ -170,7 +170,7 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
               transition: "all 0.12s",
             }}
           >
-            <Clock size={14} color="#52525B" />
+            <History size={14} color="#52525B" />
             Go to Classic
           </button>
 

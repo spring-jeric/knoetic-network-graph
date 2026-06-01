@@ -1,10 +1,10 @@
 import React, { useState, useRef } from "react";
 import ReactDOM from "react-dom";
 import {
-  Rss, BarChart2, Library, MoreHorizontal, ChevronRight,
-  Globe, IdCard, ListFilter, Network, Workflow,
-  LayoutDashboard, Users, Users2, UserMinus,
-  Pin, AlignJustify, UserCog, ShieldCheck,
+  LayoutList, AreaChart, Library, MoreHorizontal, ChevronRight,
+  Globe, IdCard, ListFilter, Network, Share2,
+  LayoutGrid, UserRoundSearch, Users2, UserMinus,
+  Pin, List, UserPlus, UserPen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -25,27 +25,27 @@ const NAV_SECTIONS: { label: string; items: NavEntry[] }[] = [
   {
     label: "CPOHQ",
     items: [
-      { type: "item", icon: Rss,             label: "Feed",       color: C.blue },
-      { type: "item", icon: BarChart2,        label: "Benchmarks", color: C.blue },
-      { type: "item", icon: Library,          label: "Library",    color: C.blue },
+      { type: "item", icon: LayoutList, label: "Feed",       color: C.blue },
+      { type: "item", icon: AreaChart,  label: "Benchmarks", color: C.blue },
+      { type: "item", icon: Library,    label: "Library",    color: C.blue },
       { type: "more", color: C.blue, count: 2 },
     ],
   },
   {
     label: "AI",
     items: [
-      { type: "item", icon: Globe,     label: "Portal",       color: C.purple },
-      { type: "item", icon: IdCard,    label: "Team Cards",   color: C.purple },
-      { type: "item", icon: ListFilter,label: "Skills Search",color: C.purple },
-      { type: "item", icon: Network,   label: "Heatmap",      color: C.purple, active: true },
-      { type: "item", icon: Workflow,  label: "Org Chart",    color: C.purple },
+      { type: "item", icon: Globe,           label: "Portal",        color: C.purple },
+      { type: "item", icon: IdCard,          label: "Team Cards",    color: C.purple },
+      { type: "item", icon: ListFilter,      label: "Skills Search", color: C.purple },
+      { type: "item", icon: Network,         label: "Heatmap",       color: C.purple, active: true },
+      { type: "item", icon: Share2,          label: "Org Chart",     color: C.purple },
     ],
   },
   {
     label: "Analytics",
     items: [
-      { type: "item", icon: LayoutDashboard, label: "Overview",       color: C.green },
-      { type: "item", icon: Users,           label: "Employee Lists", color: C.green },
+      { type: "item", icon: LayoutGrid,      label: "Overview",       color: C.green },
+      { type: "item", icon: UserRoundSearch, label: "Employee Lists", color: C.green },
       { type: "item", icon: Users2,          label: "Workforce",      color: C.green },
       { type: "item", icon: UserMinus,       label: "Attrition",      color: C.green },
       { type: "more", color: C.green, count: 2 },
@@ -54,16 +54,16 @@ const NAV_SECTIONS: { label: string; items: NavEntry[] }[] = [
   {
     label: "Custom Dashboards",
     items: [
-      { type: "item", icon: Pin,          label: "Pin 1",   color: C.green },
-      { type: "item", icon: Pin,          label: "Pin 2",   color: C.green },
-      { type: "item", icon: AlignJustify, label: "See All", color: C.green },
+      { type: "item", icon: Pin,  label: "Pin 1",   color: C.green },
+      { type: "item", icon: Pin,  label: "Pin 2",   color: C.green },
+      { type: "item", icon: List, label: "See All", color: C.green },
     ],
   },
   {
     label: "Admin Superpowers",
     items: [
-      { type: "item", icon: UserCog,    label: "Manage Users",       color: C.magenta },
-      { type: "item", icon: ShieldCheck,label: "Manage Permissions", color: C.magenta },
+      { type: "item", icon: UserPlus, label: "Manage Users",       color: C.magenta },
+      { type: "item", icon: UserPen,  label: "Manage Permissions", color: C.magenta },
       { type: "more", color: C.magenta, count: 2 },
     ],
   },
