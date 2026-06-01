@@ -290,7 +290,7 @@ export default function SideNav() {
   return (
     <div style={{
       width: 228,
-      height: "100vh",
+      height: "100%",
       background: "#FFFFFF",
       borderRight: "1px solid #F5F5F5",
       display: "flex",
@@ -298,55 +298,6 @@ export default function SideNav() {
       flexShrink: 0,
       fontFamily: "Inter, system-ui, sans-serif",
     }}>
-
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div style={{ padding: 8, borderBottom: "1px solid #F5F5F5" }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "8px 6px 8px 4px",
-          gap: 12,
-          borderRadius: 6,
-          cursor: "pointer",
-        }}>
-          {/* App logo */}
-          <div style={{
-            width: 22, height: 22,
-            background: "#18181B",
-            borderRadius: 4,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}>
-            {icons.logo("")}
-          </div>
-
-          {/* Name + chevron */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", minWidth: 0, gap: 4 }}>
-            <span style={{
-              flex: 1,
-              fontWeight: 600,
-              fontSize: 14,
-              color: "#3F3F46",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}>
-              People Intelligence
-            </span>
-            {icons.chevronDown("")}
-          </div>
-
-          {/* Separator */}
-          <div style={{ width: 1, height: 16, background: "#F0F0F0", flexShrink: 0 }} />
-
-          {/* Collapse */}
-          <div style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-            {icons.collapse("")}
-          </div>
-        </div>
-      </div>
 
       {/* ── Nav body ────────────────────────────────────────────────────── */}
       <div style={{
