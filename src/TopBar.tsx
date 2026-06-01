@@ -82,6 +82,8 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
   const iconColor = "#52525B";
 
   return (
+    <>
+    <style>{`.topbar-search::placeholder { color: #595959; opacity: 1; }`}</style>
     <div style={{
       height: 52,
       background: "#FFFFFF",
@@ -148,18 +150,30 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
       </div>
 
       {/* ── Search ────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "0 16px", minWidth: 0 }}>
-        <div style={{ position: "relative", width: "100%", maxWidth: 380, height: 36 }}>
+      <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 0 }}>
+        {/* Spec: 284×32px, pill, padding 6 9 6 12, gap 6 */}
+        <div
+          onClick={() => searchRef.current?.focus()}
+          style={{
+            boxSizing: "border-box",
+            display: "flex", flexDirection: "row",
+            alignItems: "center",
+            padding: "6px 9px 6px 12px",
+            gap: 6,
+            width: 284, height: 32,
+            background: "#FFFFFF",
+            border: `1px solid ${searchFocused ? "#C4B5FD" : "#D9D9D9"}`,
+            borderRadius: 100,
+            cursor: "text",
+            boxShadow: searchFocused ? "0 0 0 3px rgba(124,92,246,0.08)" : "none",
+            transition: "border-color 0.15s, box-shadow 0.15s",
+            flexShrink: 0,
+          }}
+        >
+          {/* Search icon 16×16, color #595959 */}
+          <Search size={16} color="#595959" strokeWidth={1.8} style={{ flexShrink: 0 }} />
 
-          {/* Search icon */}
-          <div style={{
-            position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-            pointerEvents: "none", display: "flex", alignItems: "center",
-            opacity: searchFocused ? 0.8 : 0.45, transition: "opacity 0.15s",
-          }}>
-            <Search size={15} color="#3F3F46" />
-          </div>
-
+          {/* Input — fills remaining space */}
           <input
             ref={searchRef}
             type="text"
@@ -168,48 +182,58 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             placeholder="Search employees"
+            className="topbar-search"
             style={{
-              width: "100%", height: "100%",
-              paddingLeft: 36, paddingRight: searchValue ? 36 : 64,
-              background: "#fff",
-              border: `1px solid ${searchFocused ? "#C4B5FD" : "#D4D4D8"}`,
-              borderRadius: 999,
-              fontSize: 13.5,
-              color: "#18181B",
-              fontFamily: "Inter, system-ui, sans-serif",
+              flex: 1,
+              background: "transparent",
+              border: "none",
               outline: "none",
-              boxShadow: searchFocused ? "0 0 0 3px rgba(124,92,246,0.08)" : "none",
-              transition: "border-color 0.15s, box-shadow 0.15s",
-              boxSizing: "border-box",
+              padding: 0,
+              margin: 0,
+              fontFamily: "Inter, system-ui, sans-serif",
+              fontWeight: 400,
+              fontSize: 13,
+              lineHeight: "16px",
+              color: "#18181B",
+              minWidth: 0,
             }}
           />
 
-          {/* ⌘K badge */}
-          {!searchValue && (
+          {/* ⌘K badge: 36×20, bg #F5F5F5, border #E6E6E6, radius 5 */}
+          {!searchValue ? (
             <div style={{
-              position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
-              display: "flex", alignItems: "center", gap: 2,
-              background: "#F4F4F5", border: "1px solid #E4E4E7",
-              borderRadius: 6, padding: "2px 6px",
-              pointerEvents: "none",
-              opacity: searchFocused ? 0.4 : 0.9,
+              display: "flex", flexDirection: "row",
+              alignItems: "center", justifyContent: "center",
+              padding: "4px 6px", gap: 4,
+              width: 36, height: 20, flexShrink: 0,
+              background: "#F5F5F5",
+              border: "1px solid #E6E6E6",
+              borderRadius: 5,
+              opacity: searchFocused ? 0.5 : 1,
               transition: "opacity 0.15s",
+              boxSizing: "border-box",
             }}>
-              <span style={{ fontSize: 11, color: "#71717A", fontWeight: 500, lineHeight: 1.4 }}>⌘</span>
-              <span style={{ fontSize: 11, color: "#71717A", fontWeight: 500, lineHeight: 1.4 }}>K</span>
+              {/* ⌘ command symbol, 12×12 */}
+              <span style={{
+                fontSize: 12, lineHeight: "12px",
+                color: "#737373", flexShrink: 0,
+              }}>⌘</span>
+              {/* K */}
+              <span style={{
+                fontFamily: "Inter, system-ui, sans-serif",
+                fontWeight: 500, fontSize: 11, lineHeight: "16px",
+                color: "#737373",
+              }}>K</span>
             </div>
-          )}
-
-          {/* Clear ✕ */}
-          {searchValue && (
+          ) : (
+            /* Clear ✕ */
             <button
-              onClick={() => { setSearchValue(""); searchRef.current?.focus(); }}
+              onClick={e => { e.stopPropagation(); setSearchValue(""); searchRef.current?.focus(); }}
               style={{
-                position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
                 width: 18, height: 18, borderRadius: "50%",
                 background: "#E4E4E7", border: "none", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 10, color: "#52525B", fontWeight: 700,
+                fontSize: 10, color: "#52525B", fontWeight: 700, flexShrink: 0,
               }}
             >✕</button>
           )}
@@ -305,5 +329,6 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
 
       </div>
     </div>
+    </>
   );
 }
