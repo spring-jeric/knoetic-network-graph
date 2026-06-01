@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import ReactDOM from "react-dom";
+import type { Page } from "./App";
 import {
   LayoutList, AreaChart, Library, MoreHorizontal, ChevronRight,
   Globe, IdCard, TextSearch, Network, Share2,
@@ -227,9 +228,19 @@ function MoreItem({
 
 // ─── SideNav ──────────────────────────────────────────────────────────────────
 
-interface SideNavProps { collapsed?: boolean }
+interface SideNavProps {
+  collapsed?: boolean;
+  currentPage?: Page;
+  onNavigate?: (page: Page) => void;
+}
 
-export default function SideNav({ collapsed = false }: SideNavProps) {
+// Map nav labels to page routes
+const NAV_ROUTES: Partial<Record<string, Page>> = {
+  "Heatmap":       "heatmap",
+  "Skills Search": "skills-search",
+};
+
+export default function SideNav({ collapsed = false, currentPage, onNavigate }: SideNavProps) {
   // Track expanded state for each "More" row by section index
   const [moreExpanded, setMoreExpanded] = useState<Record<number, boolean>>({});
   const toggleMore = (si: number) =>
@@ -296,8 +307,13 @@ export default function SideNav({ collapsed = false }: SideNavProps) {
                     icon={entry.icon}
                     label={entry.label}
                     color={entry.color}
-                    active={entry.active}
+                    active={
+                      NAV_ROUTES[entry.label]
+                        ? currentPage === NAV_ROUTES[entry.label]
+                        : entry.active
+                    }
                     collapsed={collapsed}
+                    onClick={NAV_ROUTES[entry.label] ? () => onNavigate?.(NAV_ROUTES[entry.label]!) : undefined}
                   />
                 ) : (
                   <MoreItem

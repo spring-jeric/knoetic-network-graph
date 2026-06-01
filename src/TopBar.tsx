@@ -3,6 +3,7 @@ import {
   ChevronDown, ChevronRight, RotateCcw, VenetianMask,
   Bell, PanelLeftClose, PanelLeftOpen, Search,
 } from "lucide-react";
+import type { Page } from "./App";
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 
@@ -54,9 +55,15 @@ function IconBtn({
 interface TopBarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  currentPage?: Page;
 }
 
-export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
+const BREADCRUMBS: Record<Page, { section: string; page: string }> = {
+  "heatmap":       { section: "AI", page: "Heatmap" },
+  "skills-search": { section: "AI", page: "Skills Search" },
+};
+
+export default function TopBar({ collapsed, onToggleCollapse, currentPage = "heatmap" }: TopBarProps) {
   const [xrayOn, setXrayOn]           = useState(false);
   const [classicHov, setClassicHov]   = useState(false);
   const [xrayHov, setXrayHov]         = useState(false);
@@ -142,10 +149,10 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
 
       {/* ── Breadcrumb ────────────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "0 16px 0 20px", flexShrink: 0 }}>
-        <span style={{ fontSize: 13, color: "#A1A1AA", fontWeight: 400 }}>AI</span>
+        <span style={{ fontSize: 13, color: "#A1A1AA", fontWeight: 400 }}>{BREADCRUMBS[currentPage].section}</span>
         <ChevronRight size={12} color="#A1A1AA" />
         <span style={{ fontSize: 13.5, color: "#18181B", fontWeight: 500, letterSpacing: "-0.01em" }}>
-          Heatmap
+          {BREADCRUMBS[currentPage].page}
         </span>
       </div>
 
