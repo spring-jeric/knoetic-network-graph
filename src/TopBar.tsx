@@ -164,17 +164,11 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
           overflow: "hidden",
           transition: "width 0.22s cubic-bezier(0.4,0,0.2,1)",
         }}>
-          {/* Logo */}
-          <img
-            src="/logo.png"
-            alt="PI"
-            style={{
-              width: 24, height: 24,
-              borderRadius: 5,
-              flexShrink: 0,
-              objectFit: "contain",
-            }}
-          />
+          {/* People Intelligence logo */}
+          <svg width="24" height="24" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+            <rect width="22" height="22" rx="4" fill="#18181B"/>
+            <path d="M9.58325 5.76211C7.28203 6.38575 5.58325 8.47778 5.58325 10.9838C5.5835 13.9778 8.00618 16.3998 11.0002 16.3998C12.4738 16.3997 13.8034 15.8113 14.7766 14.8578L15.217 15.1166C14.1427 16.2165 12.6496 16.8998 10.9934 16.8998C7.72875 16.8998 5.0835 14.2503 5.08325 10.9838C5.08325 8.20099 6.9971 5.86966 9.58325 5.23672V5.76211ZM12.4163 5.23672C14.998 5.87106 16.9163 8.20757 16.9163 10.9838C16.9162 11.5418 16.8336 12.0818 16.6858 12.5941L16.2405 12.3324C16.3512 11.9051 16.4162 11.4548 16.4163 10.9838C16.4163 8.47758 14.7178 6.38459 12.4163 5.76113V5.23672Z" fill="black" stroke="#FAFAFA" strokeWidth="1.5"/>
+          </svg>
 
           {!collapsed && (
             <>
