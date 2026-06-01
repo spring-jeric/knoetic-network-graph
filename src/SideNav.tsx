@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import type { Page } from "./App";
 import {
   LayoutList, AreaChart, Library, MoreHorizontal, ChevronRight,
-  Globe, IdCard, TextSearch, Network, Share2,
+  Globe, IdCard, TextSearch, Radar, Network,
   LayoutGrid, UserRoundSearch, Users2, UserMinus,
   Pin, List, UserPlus, UserPen,
 } from "lucide-react";
@@ -38,8 +38,8 @@ const NAV_SECTIONS: { label: string; items: NavEntry[] }[] = [
       { type: "item", icon: Globe,           label: "Portal",        color: C.purple },
       { type: "item", icon: IdCard,          label: "Team Cards",    color: C.purple },
       { type: "item", icon: TextSearch,       label: "Skills Search", color: C.purple },
-      { type: "item", icon: Network,         label: "Heatmap",       color: C.purple, active: true },
-      { type: "item", icon: Share2,          label: "Org Chart",     color: C.purple },
+      { type: "item", icon: Radar,            label: "Heatmap",       color: C.purple, active: true },
+      { type: "item", icon: Network,         label: "Org Chart",     color: C.purple },
     ],
   },
   {
