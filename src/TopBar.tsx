@@ -142,10 +142,10 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
 
       {/* ── Breadcrumb ────────────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "0 16px 0 20px", flexShrink: 0 }}>
-        <span style={{ fontSize: 13, color: "#A1A1AA", fontWeight: 400 }}>Analytics</span>
+        <span style={{ fontSize: 13, color: "#A1A1AA", fontWeight: 400 }}>AI</span>
         <ChevronRight size={12} color="#A1A1AA" />
-        <span style={{ fontSize: 13.5, color: "#18181B", fontWeight: 600, letterSpacing: "-0.01em" }}>
-          Network Graph
+        <span style={{ fontSize: 13.5, color: "#18181B", fontWeight: 500, letterSpacing: "-0.01em" }}>
+          Heatmap
         </span>
       </div>
 
