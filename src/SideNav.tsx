@@ -171,19 +171,22 @@ interface NavItemProps {
   active?: boolean;
   rightSlot?: React.ReactNode;
   onClick?: () => void;
+  collapsed?: boolean;
 }
 
-function NavItem({ iconName, label, color, active = false, rightSlot, onClick }: NavItemProps) {
+function NavItem({ iconName, label, color, active = false, rightSlot, onClick, collapsed = false }: NavItemProps) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
+      title={collapsed ? label : undefined}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "flex",
         alignItems: "center",
-        padding: "0 8px",
+        justifyContent: collapsed ? "center" : "flex-start",
+        padding: collapsed ? "0" : "0 8px",
         gap: 8,
         height: 32,
         borderRadius: 6,
@@ -194,33 +197,44 @@ function NavItem({ iconName, label, color, active = false, rightSlot, onClick }:
         transition: "background 0.12s",
       }}
     >
-      <Icon name={iconName} color={active ? color : `${color}99`} />
-      <span style={{
-        flex: 1,
-        fontFamily: "Inter, system-ui, sans-serif",
-        fontWeight: active ? 500 : 400,
-        fontSize: 14,
-        lineHeight: "100%",
-        color: active ? color : "#434343",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-      }}>
-        {label}
-      </span>
-      {rightSlot}
+      {/* Full opacity on all icons — active shows section color, inactive shows it too */}
+      <Icon name={iconName} color={color} />
+      {!collapsed && (
+        <>
+          <span style={{
+            flex: 1,
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontWeight: active ? 500 : 400,
+            fontSize: 13.5,
+            lineHeight: "100%",
+            color: active ? color : "#3F3F46",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>
+            {label}
+          </span>
+          {rightSlot}
+        </>
+      )}
     </div>
   );
 }
 
-function SectionLabel({ label }: { label: string }) {
+function SectionLabel({ label, collapsed }: { label: string; collapsed?: boolean }) {
+  if (collapsed) {
+    // Thin divider instead of label when collapsed
+    return <div style={{ height: 1, background: "#F0F0F0", margin: "4px 10px" }} />;
+  }
   return (
     <div style={{
       padding: "4px 4px",
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: 600,
-      color: "#434343",
+      color: "#A1A1AA",
       fontFamily: "Inter, system-ui, sans-serif",
+      letterSpacing: "0.06em",
+      textTransform: "uppercase",
       marginBottom: 2,
     }}>
       {label}
@@ -228,17 +242,20 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-function MoreItem({ color, count = 2, onClick, expanded }: { color: string; count?: number; onClick: () => void; expanded: boolean }) {
+function MoreItem({ color, count = 2, onClick, expanded, collapsed = false }:
+  { color: string; count?: number; onClick: () => void; expanded: boolean; collapsed?: boolean }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
+      title={collapsed ? `+${count} more` : undefined}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "flex",
         alignItems: "center",
-        padding: "0 8px",
+        justifyContent: collapsed ? "center" : "flex-start",
+        padding: collapsed ? "0" : "0 8px",
         gap: 8,
         height: 32,
         borderRadius: 6,
@@ -247,114 +264,141 @@ function MoreItem({ color, count = 2, onClick, expanded }: { color: string; coun
         transition: "background 0.12s",
       }}
     >
-      <Icon name="more" color={`${color}99`} />
-      <span style={{
-        flex: 1,
-        fontFamily: "Inter, system-ui, sans-serif",
-        fontWeight: 400,
-        fontSize: 14,
-        color: "#434343",
-      }}>More</span>
-      <div style={{
-        background: color,
-        borderRadius: 96,
-        padding: "0 8px",
-        height: 20,
-        display: "flex",
-        alignItems: "center",
-        flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: "#fff", whiteSpace: "nowrap" }}>
-          +{count} others
-        </span>
-      </div>
-      <div style={{
-        transform: expanded ? "rotate(90deg)" : "none",
-        transition: "transform 0.15s",
-        display: "flex",
-        flexShrink: 0,
-      }}>
-        {icons.chevronRight(color)}
-      </div>
+      <Icon name="more" color={color} />
+      {!collapsed && (
+        <>
+          <span style={{
+            flex: 1,
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontWeight: 400,
+            fontSize: 13.5,
+            color: "#3F3F46",
+          }}>More</span>
+          <div style={{
+            background: color,
+            borderRadius: 96,
+            padding: "0 7px",
+            height: 18,
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: "#fff", whiteSpace: "nowrap" }}>
+              +{count} others
+            </span>
+          </div>
+          <div style={{
+            transform: expanded ? "rotate(90deg)" : "none",
+            transition: "transform 0.15s",
+            display: "flex",
+            flexShrink: 0,
+          }}>
+            {icons.chevronRight(color)}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 // ─── SideNav ──────────────────────────────────────────────────────────────────
 
-export default function SideNav() {
-  const [cpohqMore, setCpohqMore]     = useState(false);
+interface SideNavProps {
+  collapsed?: boolean;
+}
+
+export default function SideNav({ collapsed = false }: SideNavProps) {
+  const [cpohqMore, setCpohqMore]       = useState(false);
   const [analyticsMore, setAnalyticsMore] = useState(false);
-  const [adminMore, setAdminMore]     = useState(false);
+  const [adminMore, setAdminMore]       = useState(false);
+
+  const w = collapsed ? 52 : 228;
 
   return (
-    <div style={{
-      width: 228,
-      height: "100%",
-      background: "#FFFFFF",
-      borderRight: "1px solid #F5F5F5",
-      display: "flex",
-      flexDirection: "column",
-      flexShrink: 0,
-      fontFamily: "Inter, system-ui, sans-serif",
-    }}>
-
-      {/* ── Nav body ────────────────────────────────────────────────────── */}
+    <>
+      <style>{`
+        .sidenav-scroll::-webkit-scrollbar { width: 3px; }
+        .sidenav-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidenav-scroll::-webkit-scrollbar-thumb {
+          background: #E4E4E7;
+          border-radius: 3px;
+        }
+        .sidenav-scroll::-webkit-scrollbar-thumb:hover { background: #D4D4D8; }
+        .sidenav-scroll { scrollbar-width: thin; scrollbar-color: #E4E4E7 transparent; }
+      `}</style>
       <div style={{
-        flex: 1,
-        overflowY: "auto",
-        padding: "8px 8px 16px",
+        width: w,
+        height: "100%",
+        background: "#FFFFFF",
+        borderRight: "1px solid #EBEBEB",
         display: "flex",
         flexDirection: "column",
-        gap: 20,
+        flexShrink: 0,
+        fontFamily: "Inter, system-ui, sans-serif",
+        overflow: "hidden",
+        transition: "width 0.22s cubic-bezier(0.4,0,0.2,1)",
       }}>
 
-        {/* CPOHQ */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <SectionLabel label="CPOHQ" />
-          <NavItem iconName="feed"       label="Feed"       color={C.blue} />
-          <NavItem iconName="benchmarks" label="Benchmarks" color={C.blue} />
-          <NavItem iconName="library"    label="Library"    color={C.blue} />
-          <MoreItem color={C.blue} count={2} onClick={() => setCpohqMore(v => !v)} expanded={cpohqMore} />
-        </div>
+        {/* ── Nav body ──────────────────────────────────────────────────── */}
+        <div
+          className="sidenav-scroll"
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            overflowX: "hidden",
+            padding: collapsed ? "8px 4px 16px" : "8px 8px 16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: collapsed ? 4 : 20,
+          }}
+        >
+          {/* CPOHQ */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <SectionLabel label="CPOHQ" collapsed={collapsed} />
+            <NavItem iconName="feed"       label="Feed"       color={C.blue}   collapsed={collapsed} />
+            <NavItem iconName="benchmarks" label="Benchmarks" color={C.blue}   collapsed={collapsed} />
+            <NavItem iconName="library"    label="Library"    color={C.blue}   collapsed={collapsed} />
+            <MoreItem color={C.blue} count={2} onClick={() => setCpohqMore(v => !v)} expanded={cpohqMore} collapsed={collapsed} />
+          </div>
 
-        {/* AI */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <SectionLabel label="AI" />
-          <NavItem iconName="portal"       label="Portal"       color={C.purple} />
-          <NavItem iconName="teamCards"    label="Team Cards"   color={C.purple} />
-          <NavItem iconName="skillsSearch" label="Skills Search" color={C.purple} />
-          <NavItem iconName="heatmap"      label="Heatmap"      color={C.purple} active />
-          <NavItem iconName="orgChart"     label="Org Chart"    color={C.purple} />
-        </div>
+          {/* AI */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <SectionLabel label="AI" collapsed={collapsed} />
+            <NavItem iconName="portal"       label="Portal"        color={C.purple} collapsed={collapsed} />
+            <NavItem iconName="teamCards"    label="Team Cards"    color={C.purple} collapsed={collapsed} />
+            <NavItem iconName="skillsSearch" label="Skills Search" color={C.purple} collapsed={collapsed} />
+            <NavItem iconName="heatmap"      label="Heatmap"       color={C.purple} active collapsed={collapsed} />
+            <NavItem iconName="orgChart"     label="Org Chart"     color={C.purple} collapsed={collapsed} />
+          </div>
 
-        {/* Analytics */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <SectionLabel label="Analytics" />
-          <NavItem iconName="overview"       label="Overview"       color={C.green} />
-          <NavItem iconName="employeeLists"  label="Employee Lists" color={C.green} />
-          <NavItem iconName="workforce"      label="Workforce"      color={C.green} />
-          <NavItem iconName="attrition"      label="Attrition"      color={C.green} />
-          <MoreItem color={C.green} count={2} onClick={() => setAnalyticsMore(v => !v)} expanded={analyticsMore} />
-        </div>
+          {/* Analytics */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <SectionLabel label="Analytics" collapsed={collapsed} />
+            <NavItem iconName="overview"      label="Overview"       color={C.green} collapsed={collapsed} />
+            <NavItem iconName="employeeLists" label="Employee Lists" color={C.green} collapsed={collapsed} />
+            <NavItem iconName="workforce"     label="Workforce"      color={C.green} collapsed={collapsed} />
+            <NavItem iconName="attrition"     label="Attrition"      color={C.green} collapsed={collapsed} />
+            <MoreItem color={C.green} count={2} onClick={() => setAnalyticsMore(v => !v)} expanded={analyticsMore} collapsed={collapsed} />
+          </div>
 
-        {/* Custom Dashboards */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <SectionLabel label="Custom Dashboards" />
-          <NavItem iconName="pin"    label="Pin 1"   color={C.green} />
-          <NavItem iconName="pin"    label="Pin 2"   color={C.green} />
-          <NavItem iconName="seeAll" label="See All" color={C.green} />
-        </div>
+          {/* Custom Dashboards */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <SectionLabel label="Custom Dashboards" collapsed={collapsed} />
+            <NavItem iconName="pin"    label="Pin 1"   color={C.green} collapsed={collapsed} />
+            <NavItem iconName="pin"    label="Pin 2"   color={C.green} collapsed={collapsed} />
+            <NavItem iconName="seeAll" label="See All" color={C.green} collapsed={collapsed} />
+          </div>
 
-        {/* Admin Superpowers */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <SectionLabel label="Admin Superpowers" />
-          <NavItem iconName="manageUsers"       label="Manage Users"       color={C.magenta} />
-          <NavItem iconName="managePermissions" label="Manage Permissions" color={C.magenta} />
-          <MoreItem color={C.magenta} count={2} onClick={() => setAdminMore(v => !v)} expanded={adminMore} />
-        </div>
+          {/* Admin Superpowers */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <SectionLabel label="Admin Superpowers" collapsed={collapsed} />
+            <NavItem iconName="manageUsers"       label="Manage Users"       color={C.magenta} collapsed={collapsed} />
+            <NavItem iconName="managePermissions" label="Manage Permissions" color={C.magenta} collapsed={collapsed} />
+            <MoreItem color={C.magenta} count={2} onClick={() => setAdminMore(v => !v)} expanded={adminMore} collapsed={collapsed} />
+          </div>
 
+        </div>
       </div>
-    </div>
+    </>
   );
 }

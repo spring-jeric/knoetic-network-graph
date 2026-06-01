@@ -454,43 +454,13 @@ export default function RadialGraph({ data }: RadialGraphProps) {
       ref={containerRef}
       style={{
         width: "100%",
-        height: "100vh",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         background: "#f7f7fa",
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
-      <div
-        style={{
-          padding: "10px 16px",
-          background: "#fff",
-          borderBottom: "1px solid #eee",
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <input
-          type="text"
-          placeholder="Search by name..."
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
-          style={{
-            background: "#f5f5f8",
-            border: "1px solid #e0e0e0",
-            borderRadius: 8,
-            padding: "7px 14px",
-            color: "#1a1a2e",
-            fontSize: 13,
-            fontFamily: "Inter, system-ui, sans-serif",
-            outline: "none",
-            width: 280,
-          }}
-        />
-
-      </div>
 
       <div
         style={{ flex: 1, position: "relative", overflow: "hidden", cursor: boxZoomActive ? "zoom-in" : "default" }}
