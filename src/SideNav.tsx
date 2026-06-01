@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import ReactDOM from "react-dom";
 import {
   LayoutList, AreaChart, Library, MoreHorizontal, ChevronRight,
-  Globe, IdCard, ListFilter, Network, Share2,
+  Globe, IdCard, TextSearch, Network, Share2,
   LayoutGrid, UserRoundSearch, Users2, UserMinus,
   Pin, List, UserPlus, UserPen,
 } from "lucide-react";
@@ -36,7 +36,7 @@ const NAV_SECTIONS: { label: string; items: NavEntry[] }[] = [
     items: [
       { type: "item", icon: Globe,           label: "Portal",        color: C.purple },
       { type: "item", icon: IdCard,          label: "Team Cards",    color: C.purple },
-      { type: "item", icon: ListFilter,      label: "Skills Search", color: C.purple },
+      { type: "item", icon: TextSearch,       label: "Skills Search", color: C.purple },
       { type: "item", icon: Network,         label: "Heatmap",       color: C.purple, active: true },
       { type: "item", icon: Share2,          label: "Org Chart",     color: C.purple },
     ],
