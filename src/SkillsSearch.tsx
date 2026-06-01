@@ -723,8 +723,8 @@ export default function SkillsSearch() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div style={{ display: "flex", background: "#F0F0F0", borderRadius: 9, padding: 3, gap: 2 }}>
             {([
-              { id: "ai",         label: "AI-Generated Skills", icon: <Sparkles size={13} /> },
-              { id: "predefined", label: "Predefined Skills",   icon: <BookOpen  size={13} /> },
+              { id: "ai",         label: "AI-Generated Skills", icon: <Sparkles size={13} />, activeColor: "#7C5CF6" },
+              { id: "predefined", label: "Predefined Skills",   icon: <BookOpen  size={13} />, activeColor: "#2563EB" },
             ] as const).map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
                 display: "flex", alignItems: "center", gap: 5,
@@ -735,7 +735,7 @@ export default function SkillsSearch() {
                 color: activeTab === tab.id ? "#18181B" : "#71717A",
                 boxShadow: activeTab === tab.id ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
               }}>
-                <span style={{ color: activeTab === tab.id ? ORANGE : "#A1A1AA" }}>{tab.icon}</span>
+                <span style={{ color: activeTab === tab.id ? tab.activeColor : "#A1A1AA" }}>{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
