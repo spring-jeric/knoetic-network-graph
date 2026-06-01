@@ -1,5 +1,12 @@
 import React, { useState, useRef } from "react";
 import ReactDOM from "react-dom";
+import {
+  Rss, BarChart2, Library, MoreHorizontal, ChevronRight,
+  Globe, IdCard, ListFilter, Network, Workflow,
+  LayoutDashboard, Users, Users2, UserMinus,
+  Pin, AlignJustify, UserCog, ShieldCheck,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 // ─── Color tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -9,165 +16,69 @@ const C = {
   magenta: "#C026D3",
 };
 
-// ─── Icon primitives ──────────────────────────────────────────────────────────
-const Svg = ({ children, size = 16 }: { children: React.ReactNode; size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    {children}
-  </svg>
-);
+// ─── Nav sections config ──────────────────────────────────────────────────────
+type NavEntry =
+  | { type: "item";  icon: LucideIcon; label: string; color: string; active?: boolean }
+  | { type: "more";  color: string; count: number };
 
-const icons: Record<string, (color: string) => React.ReactNode> = {
-  // Header
-  logo: (_c) => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <circle cx="7" cy="7" r="5.5" stroke="#FAFAFA" strokeWidth="1.8"/>
-      <circle cx="7" cy="7" r="2"   fill="#FAFAFA"/>
-    </svg>
-  ),
-  collapse: (_c) => (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <rect x="2.5" y="2.5" width="13" height="13" rx="2" stroke="#354052" strokeWidth="1.2"/>
-      <line x1="6.5" y1="2.5" x2="6.5" y2="15.5" stroke="#354052" strokeWidth="1.2"/>
-      <path d="M10 6.5l2.5 2.5-2.5 2.5" stroke="#354052" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-  chevronDown: (_c) => (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M4 6l4 4 4-4" stroke="#3F3F46" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-  chevronRight: (c) => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M5 3l4 4-4 4" stroke={c} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-
-  // CPOHQ
-  feed: (c) => <Svg>
-    <rect x="2" y="2" width="5.5" height="5.5" rx="1" stroke={c} strokeWidth="1.4"/>
-    <rect x="8.5" y="2" width="5.5" height="5.5" rx="1" stroke={c} strokeWidth="1.4"/>
-    <rect x="2" y="8.5" width="5.5" height="5.5" rx="1" stroke={c} strokeWidth="1.4"/>
-    <rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" stroke={c} strokeWidth="1.4"/>
-  </Svg>,
-  benchmarks: (c) => <Svg>
-    <rect x="2" y="2" width="12" height="9" rx="1.5" stroke={c} strokeWidth="1.4"/>
-    <path d="M5 9l2-3 2 2 2-4" stroke={c} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-    <line x1="4" y1="13" x2="12" y2="13" stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
-  </Svg>,
-  library: (c) => <Svg>
-    <rect x="2"   y="2" width="3" height="12" rx="0.8" stroke={c} strokeWidth="1.3"/>
-    <rect x="6.5" y="2" width="3" height="12" rx="0.8" stroke={c} strokeWidth="1.3"/>
-    <path d="M11 2.5l2.5 11" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-  </Svg>,
-  more: (c) => <Svg>
-    <circle cx="4"  cy="8" r="1.2" fill={c}/>
-    <circle cx="8"  cy="8" r="1.2" fill={c}/>
-    <circle cx="12" cy="8" r="1.2" fill={c}/>
-  </Svg>,
-
-  // AI
-  portal: (c) => <Svg>
-    <circle cx="8" cy="8" r="5.5" stroke={c} strokeWidth="1.4"/>
-    <ellipse cx="8" cy="8" rx="2.5" ry="5.5" stroke={c} strokeWidth="1.2"/>
-    <line x1="2.5" y1="8" x2="13.5" y2="8" stroke={c} strokeWidth="1.2"/>
-  </Svg>,
-  teamCards: (c) => <Svg>
-    <rect x="2" y="4" width="12" height="9" rx="1.5" stroke={c} strokeWidth="1.4"/>
-    <circle cx="6" cy="8" r="1.8" stroke={c} strokeWidth="1.2"/>
-    <path d="M10 7h2.5M10 9.5h2" stroke={c} strokeWidth="1.2" strokeLinecap="round"/>
-  </Svg>,
-  skillsSearch: (c) => <Svg>
-    <line x1="3" y1="4.5" x2="13" y2="4.5" stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
-    <line x1="3" y1="8"   x2="9"  y2="8"   stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
-    <line x1="3" y1="11.5" x2="7" y2="11.5" stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
-    <circle cx="11.5" cy="10.5" r="2" stroke={c} strokeWidth="1.2"/>
-    <line x1="13" y1="12" x2="14.5" y2="13.5" stroke={c} strokeWidth="1.2" strokeLinecap="round"/>
-  </Svg>,
-  heatmap: (c) => <Svg>
-    <circle cx="8" cy="8" r="2.2" fill={c} fillOpacity="0.3" stroke={c} strokeWidth="1.2"/>
-    <circle cx="3" cy="5" r="1.5" stroke={c} strokeWidth="1.2"/>
-    <circle cx="13" cy="5" r="1.5" stroke={c} strokeWidth="1.2"/>
-    <circle cx="3" cy="11" r="1.5" stroke={c} strokeWidth="1.2"/>
-    <circle cx="13" cy="11" r="1.5" stroke={c} strokeWidth="1.2"/>
-    <line x1="4.4" y1="5.9" x2="6.3" y2="6.8"  stroke={c} strokeWidth="1.1"/>
-    <line x1="11.6" y1="5.9" x2="9.7" y2="6.8" stroke={c} strokeWidth="1.1"/>
-    <line x1="4.4" y1="10.1" x2="6.3" y2="9.2" stroke={c} strokeWidth="1.1"/>
-    <line x1="11.6" y1="10.1" x2="9.7" y2="9.2" stroke={c} strokeWidth="1.1"/>
-  </Svg>,
-  orgChart: (c) => <Svg>
-    <rect x="5.5" y="1.5" width="5" height="3.5" rx="1" stroke={c} strokeWidth="1.3"/>
-    <rect x="1"   y="11"  width="4.5" height="3.5" rx="1" stroke={c} strokeWidth="1.3"/>
-    <rect x="10.5" y="11" width="4.5" height="3.5" rx="1" stroke={c} strokeWidth="1.3"/>
-    <line x1="8" y1="5" x2="8" y2="8" stroke={c} strokeWidth="1.3"/>
-    <line x1="3.25" y1="8" x2="12.75" y2="8" stroke={c} strokeWidth="1.3"/>
-    <line x1="3.25" y1="8" x2="3.25" y2="11" stroke={c} strokeWidth="1.3"/>
-    <line x1="12.75" y1="8" x2="12.75" y2="11" stroke={c} strokeWidth="1.3"/>
-  </Svg>,
-
-  // Analytics
-  overview: (c) => <Svg>
-    <rect x="2"   y="2"   width="5" height="5" rx="1" stroke={c} strokeWidth="1.3"/>
-    <rect x="9"   y="2"   width="5" height="5" rx="1" stroke={c} strokeWidth="1.3"/>
-    <rect x="2"   y="9"   width="5" height="5" rx="1" stroke={c} strokeWidth="1.3"/>
-    <rect x="9"   y="9"   width="5" height="5" rx="1" stroke={c} strokeWidth="1.3"/>
-  </Svg>,
-  employeeLists: (c) => <Svg>
-    <circle cx="6" cy="5.5" r="2.5" stroke={c} strokeWidth="1.3"/>
-    <path d="M2 14c0-3.3 1.8-5 4-5s4 1.7 4 5" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-    <line x1="11" y1="6"  x2="14.5" y2="6"  stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-    <line x1="11" y1="9"  x2="14.5" y2="9"  stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-    <line x1="11" y1="12" x2="14.5" y2="12" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-  </Svg>,
-  workforce: (c) => <Svg>
-    <circle cx="5.5" cy="5" r="2.2" stroke={c} strokeWidth="1.3"/>
-    <path d="M1.5 14c0-2.8 1.8-4.5 4-4.5" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-    <circle cx="10.5" cy="5" r="2.2" stroke={c} strokeWidth="1.3"/>
-    <path d="M14.5 14c0-2.8-1.8-4.5-4-4.5s-4 1.7-4 4.5" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-  </Svg>,
-  attrition: (c) => <Svg>
-    <circle cx="8" cy="5.5" r="2.5" stroke={c} strokeWidth="1.3"/>
-    <path d="M3 14c0-3 2.2-5 5-5s5 2 5 5" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-    <line x1="11" y1="10" x2="11" y2="14.5" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-    <path d="M9 13l2 1.5 2-1.5" stroke={c} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-  </Svg>,
-
-  // Custom Dashboards
-  pin: (c) => <Svg>
-    <path d="M8 2l1.5 4.5H13l-3 2.5 1 4L8 11l-3 2.5 1-4-3-2.5h3.5L8 2z" stroke={c} strokeWidth="1.3" strokeLinejoin="round"/>
-    <line x1="8" y1="13.5" x2="8" y2="15.5" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-  </Svg>,
-  seeAll: (c) => <Svg>
-    <line x1="2" y1="4.5"  x2="14" y2="4.5"  stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
-    <line x1="2" y1="8"    x2="14" y2="8"    stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
-    <line x1="2" y1="11.5" x2="14" y2="11.5" stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
-  </Svg>,
-
-  // Admin
-  manageUsers: (c) => <Svg>
-    <circle cx="7" cy="5.5" r="2.5" stroke={c} strokeWidth="1.3"/>
-    <path d="M2 14c0-3 2.2-5 5-5" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-    <line x1="12.5" y1="9.5" x2="12.5" y2="14.5" stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
-    <line x1="10" y1="12"    x2="15"   y2="12"   stroke={c} strokeWidth="1.4" strokeLinecap="round"/>
-  </Svg>,
-  managePermissions: (c) => <Svg>
-    <circle cx="7" cy="5.5" r="2.5" stroke={c} strokeWidth="1.3"/>
-    <path d="M2 14c0-3 2.2-5 5-5" stroke={c} strokeWidth="1.3" strokeLinecap="round"/>
-    <rect x="10" y="9" width="5" height="5.5" rx="1" stroke={c} strokeWidth="1.2"/>
-    <path d="M11.5 9V7.5a1 1 0 012 0V9" stroke={c} strokeWidth="1.2" strokeLinecap="round"/>
-  </Svg>,
-};
+const NAV_SECTIONS: { label: string; items: NavEntry[] }[] = [
+  {
+    label: "CPOHQ",
+    items: [
+      { type: "item", icon: Rss,             label: "Feed",       color: C.blue },
+      { type: "item", icon: BarChart2,        label: "Benchmarks", color: C.blue },
+      { type: "item", icon: Library,          label: "Library",    color: C.blue },
+      { type: "more", color: C.blue, count: 2 },
+    ],
+  },
+  {
+    label: "AI",
+    items: [
+      { type: "item", icon: Globe,     label: "Portal",       color: C.purple },
+      { type: "item", icon: IdCard,    label: "Team Cards",   color: C.purple },
+      { type: "item", icon: ListFilter,label: "Skills Search",color: C.purple },
+      { type: "item", icon: Network,   label: "Heatmap",      color: C.purple, active: true },
+      { type: "item", icon: Workflow,  label: "Org Chart",    color: C.purple },
+    ],
+  },
+  {
+    label: "Analytics",
+    items: [
+      { type: "item", icon: LayoutDashboard, label: "Overview",       color: C.green },
+      { type: "item", icon: Users,           label: "Employee Lists", color: C.green },
+      { type: "item", icon: Users2,          label: "Workforce",      color: C.green },
+      { type: "item", icon: UserMinus,       label: "Attrition",      color: C.green },
+      { type: "more", color: C.green, count: 2 },
+    ],
+  },
+  {
+    label: "Custom Dashboards",
+    items: [
+      { type: "item", icon: Pin,          label: "Pin 1",   color: C.green },
+      { type: "item", icon: Pin,          label: "Pin 2",   color: C.green },
+      { type: "item", icon: AlignJustify, label: "See All", color: C.green },
+    ],
+  },
+  {
+    label: "Admin Superpowers",
+    items: [
+      { type: "item", icon: UserCog,    label: "Manage Users",       color: C.magenta },
+      { type: "item", icon: ShieldCheck,label: "Manage Permissions", color: C.magenta },
+      { type: "more", color: C.magenta, count: 2 },
+    ],
+  },
+];
 
 // ─── Tooltip portal ───────────────────────────────────────────────────────────
 
 function NavTooltip({ label, anchor }: { label: string; anchor: HTMLElement | null }) {
   if (!anchor) return null;
   const rect = anchor.getBoundingClientRect();
-  const top = rect.top + rect.height / 2;
   return ReactDOM.createPortal(
     <div style={{
       position: "fixed",
       left: rect.right + 10,
-      top,
+      top: rect.top + rect.height / 2,
       transform: "translateY(-50%)",
       background: "#18181B",
       color: "#FAFAFA",
@@ -188,25 +99,16 @@ function NavTooltip({ label, anchor }: { label: string; anchor: HTMLElement | nu
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── NavItem ──────────────────────────────────────────────────────────────────
 
-function Icon({ name, color }: { name: string; color: string }) {
-  const fn = icons[name];
-  if (!fn) return null;
-  return <span style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>{fn(color)}</span>;
-}
-
-interface NavItemProps {
-  iconName: string;
-  label: string;
-  color: string;
-  active?: boolean;
-  rightSlot?: React.ReactNode;
-  onClick?: () => void;
-  collapsed?: boolean;
-}
-
-function NavItem({ iconName, label, color, active = false, rightSlot, onClick, collapsed = false }: NavItemProps) {
+function NavItem({
+  icon: Icon, label, color, active = false, collapsed = false,
+  rightSlot, onClick,
+}: {
+  icon: LucideIcon; label: string; color: string;
+  active?: boolean; collapsed?: boolean;
+  rightSlot?: React.ReactNode; onClick?: () => void;
+}) {
   const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -221,20 +123,17 @@ function NavItem({ iconName, label, color, active = false, rightSlot, onClick, c
           display: "flex",
           alignItems: "center",
           justifyContent: collapsed ? "center" : "flex-start",
-          padding: collapsed ? "0" : "0 8px",
+          padding: collapsed ? 0 : "0 8px",
           gap: 8,
           height: 34,
           borderRadius: 8,
           cursor: "pointer",
-          background: active
-            ? `${color}14`
-            : hovered ? "rgba(0,0,0,0.05)" : "transparent",
+          background: active ? `${color}14` : hovered ? "rgba(0,0,0,0.05)" : "transparent",
           transition: "background 0.12s",
-          margin: collapsed ? "0 auto" : undefined,
-          width: collapsed ? 36 : undefined,
+          ...(collapsed ? { margin: "0 auto", width: 36 } : {}),
         }}
       >
-        <Icon name={iconName} color={color} />
+        <Icon size={16} color={color} strokeWidth={1.75} />
         {!collapsed && (
           <>
             <span style={{
@@ -254,38 +153,20 @@ function NavItem({ iconName, label, color, active = false, rightSlot, onClick, c
           </>
         )}
       </div>
-      {collapsed && hovered && (
-        <NavTooltip label={label} anchor={ref.current} />
-      )}
+      {collapsed && hovered && <NavTooltip label={label} anchor={ref.current} />}
     </>
   );
 }
 
-function SectionLabel({ label, collapsed }: { label: string; collapsed?: boolean }) {
-  if (collapsed) {
-    return <div style={{ height: 1, background: "#EBEBEB", margin: "6px 12px" }} />;
-  }
-  return (
-    <div style={{
-      padding: "4px 4px",
-      fontSize: 11,
-      fontWeight: 600,
-      color: "#A1A1AA",
-      fontFamily: "Inter, system-ui, sans-serif",
-      letterSpacing: "0.06em",
-      textTransform: "uppercase",
-      marginBottom: 2,
-    }}>
-      {label}
-    </div>
-  );
-}
+// ─── MoreItem ─────────────────────────────────────────────────────────────────
 
-function MoreItem({ color, count = 2, onClick, expanded, collapsed = false }:
-  { color: string; count?: number; onClick: () => void; expanded: boolean; collapsed?: boolean }) {
+function MoreItem({
+  color, count, expanded, collapsed = false, onClick,
+}: {
+  color: string; count: number; expanded: boolean; collapsed?: boolean; onClick: () => void;
+}) {
   const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const tooltipLabel = `+${count} more`;
 
   return (
     <>
@@ -298,18 +179,17 @@ function MoreItem({ color, count = 2, onClick, expanded, collapsed = false }:
           display: "flex",
           alignItems: "center",
           justifyContent: collapsed ? "center" : "flex-start",
-          padding: collapsed ? "0" : "0 8px",
+          padding: collapsed ? 0 : "0 8px",
           gap: 8,
           height: 34,
           borderRadius: 8,
           cursor: "pointer",
           background: hovered ? "rgba(0,0,0,0.05)" : "transparent",
           transition: "background 0.12s",
-          margin: collapsed ? "0 auto" : undefined,
-          width: collapsed ? 36 : undefined,
+          ...(collapsed ? { margin: "0 auto", width: 36 } : {}),
         }}
       >
-        <Icon name="more" color={color} />
+        <MoreHorizontal size={16} color={color} strokeWidth={1.75} />
         {!collapsed && (
           <>
             <span style={{
@@ -318,15 +198,13 @@ function MoreItem({ color, count = 2, onClick, expanded, collapsed = false }:
               fontWeight: 400,
               fontSize: 13.5,
               color: "#3F3F46",
-            }}>More</span>
+            }}>
+              More
+            </span>
             <div style={{
-              background: color,
-              borderRadius: 96,
-              padding: "0 7px",
-              height: 18,
-              display: "flex",
-              alignItems: "center",
-              flexShrink: 0,
+              background: color, borderRadius: 96,
+              padding: "0 7px", height: 18,
+              display: "flex", alignItems: "center", flexShrink: 0,
             }}>
               <span style={{ fontSize: 11, fontWeight: 500, color: "#fff", whiteSpace: "nowrap" }}>
                 +{count} others
@@ -335,60 +213,50 @@ function MoreItem({ color, count = 2, onClick, expanded, collapsed = false }:
             <div style={{
               transform: expanded ? "rotate(90deg)" : "none",
               transition: "transform 0.15s",
-              display: "flex",
-              flexShrink: 0,
+              display: "flex", flexShrink: 0,
             }}>
-              {icons.chevronRight(color)}
+              <ChevronRight size={13} color={color} />
             </div>
           </>
         )}
       </div>
-      {collapsed && hovered && (
-        <NavTooltip label={tooltipLabel} anchor={ref.current} />
-      )}
+      {collapsed && hovered && <NavTooltip label={`+${count} more`} anchor={ref.current} />}
     </>
   );
 }
 
 // ─── SideNav ──────────────────────────────────────────────────────────────────
 
-interface SideNavProps {
-  collapsed?: boolean;
-}
+interface SideNavProps { collapsed?: boolean }
 
 export default function SideNav({ collapsed = false }: SideNavProps) {
-  const [cpohqMore, setCpohqMore]       = useState(false);
-  const [analyticsMore, setAnalyticsMore] = useState(false);
-  const [adminMore, setAdminMore]       = useState(false);
-
-  const w = collapsed ? 52 : 228;
+  // Track expanded state for each "More" row by section index
+  const [moreExpanded, setMoreExpanded] = useState<Record<number, boolean>>({});
+  const toggleMore = (si: number) =>
+    setMoreExpanded(prev => ({ ...prev, [si]: !prev[si] }));
 
   return (
     <>
       <style>{`
         .sidenav-scroll::-webkit-scrollbar { width: 3px; }
         .sidenav-scroll::-webkit-scrollbar-track { background: transparent; }
-        .sidenav-scroll::-webkit-scrollbar-thumb {
-          background: #E4E4E7;
-          border-radius: 3px;
-        }
+        .sidenav-scroll::-webkit-scrollbar-thumb { background: #E4E4E7; border-radius: 3px; }
         .sidenav-scroll::-webkit-scrollbar-thumb:hover { background: #D4D4D8; }
         .sidenav-scroll { scrollbar-width: thin; scrollbar-color: #E4E4E7 transparent; }
       `}</style>
+
       <div style={{
-        width: w,
+        width: collapsed ? 52 : 228,
         height: "100%",
         background: "#FFFFFF",
         borderRight: "1px solid #EBEBEB",
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
-        fontFamily: "Inter, system-ui, sans-serif",
         overflow: "hidden",
         transition: "width 0.22s cubic-bezier(0.4,0,0.2,1)",
+        fontFamily: "Inter, system-ui, sans-serif",
       }}>
-
-        {/* ── Nav body ──────────────────────────────────────────────────── */}
         <div
           className="sidenav-scroll"
           style={{
@@ -401,51 +269,49 @@ export default function SideNav({ collapsed = false }: SideNavProps) {
             gap: collapsed ? 2 : 20,
           }}
         >
-          {/* CPOHQ */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <SectionLabel label="CPOHQ" collapsed={collapsed} />
-            <NavItem iconName="feed"       label="Feed"       color={C.blue}   collapsed={collapsed} />
-            <NavItem iconName="benchmarks" label="Benchmarks" color={C.blue}   collapsed={collapsed} />
-            <NavItem iconName="library"    label="Library"    color={C.blue}   collapsed={collapsed} />
-            <MoreItem color={C.blue} count={2} onClick={() => setCpohqMore(v => !v)} expanded={cpohqMore} collapsed={collapsed} />
-          </div>
+          {NAV_SECTIONS.map((section, si) => (
+            <div key={section.label} style={{ display: "flex", flexDirection: "column", gap: 1 }}>
 
-          {/* AI */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <SectionLabel label="AI" collapsed={collapsed} />
-            <NavItem iconName="portal"       label="Portal"        color={C.purple} collapsed={collapsed} />
-            <NavItem iconName="teamCards"    label="Team Cards"    color={C.purple} collapsed={collapsed} />
-            <NavItem iconName="skillsSearch" label="Skills Search" color={C.purple} collapsed={collapsed} />
-            <NavItem iconName="heatmap"      label="Heatmap"       color={C.purple} active collapsed={collapsed} />
-            <NavItem iconName="orgChart"     label="Org Chart"     color={C.purple} collapsed={collapsed} />
-          </div>
+              {/* Section label / divider */}
+              {collapsed
+                ? <div style={{ height: 1, background: "#EBEBEB", margin: "6px 12px" }} />
+                : (
+                  <div style={{
+                    padding: "4px 4px",
+                    fontSize: 11, fontWeight: 600,
+                    color: "#A1A1AA",
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    marginBottom: 2,
+                  }}>
+                    {section.label}
+                  </div>
+                )
+              }
 
-          {/* Analytics */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <SectionLabel label="Analytics" collapsed={collapsed} />
-            <NavItem iconName="overview"      label="Overview"       color={C.green} collapsed={collapsed} />
-            <NavItem iconName="employeeLists" label="Employee Lists" color={C.green} collapsed={collapsed} />
-            <NavItem iconName="workforce"     label="Workforce"      color={C.green} collapsed={collapsed} />
-            <NavItem iconName="attrition"     label="Attrition"      color={C.green} collapsed={collapsed} />
-            <MoreItem color={C.green} count={2} onClick={() => setAnalyticsMore(v => !v)} expanded={analyticsMore} collapsed={collapsed} />
-          </div>
-
-          {/* Custom Dashboards */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <SectionLabel label="Custom Dashboards" collapsed={collapsed} />
-            <NavItem iconName="pin"    label="Pin 1"   color={C.green} collapsed={collapsed} />
-            <NavItem iconName="pin"    label="Pin 2"   color={C.green} collapsed={collapsed} />
-            <NavItem iconName="seeAll" label="See All" color={C.green} collapsed={collapsed} />
-          </div>
-
-          {/* Admin Superpowers */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <SectionLabel label="Admin Superpowers" collapsed={collapsed} />
-            <NavItem iconName="manageUsers"       label="Manage Users"       color={C.magenta} collapsed={collapsed} />
-            <NavItem iconName="managePermissions" label="Manage Permissions" color={C.magenta} collapsed={collapsed} />
-            <MoreItem color={C.magenta} count={2} onClick={() => setAdminMore(v => !v)} expanded={adminMore} collapsed={collapsed} />
-          </div>
-
+              {section.items.map((entry, ei) =>
+                entry.type === "item" ? (
+                  <NavItem
+                    key={ei}
+                    icon={entry.icon}
+                    label={entry.label}
+                    color={entry.color}
+                    active={entry.active}
+                    collapsed={collapsed}
+                  />
+                ) : (
+                  <MoreItem
+                    key={ei}
+                    color={entry.color}
+                    count={entry.count}
+                    expanded={!!moreExpanded[si]}
+                    collapsed={collapsed}
+                    onClick={() => toggleMore(si)}
+                  />
+                )
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </>
