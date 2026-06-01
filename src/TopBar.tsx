@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
-  ChevronDown, ChevronRight, History, VenetianMask,
-  Zap, Sparkles, Bell, PanelLeftClose, PanelLeftOpen, Search,
+  ChevronDown, ChevronRight, RotateCcw, VenetianMask,
+  Bell, PanelLeftClose, PanelLeftOpen, Search,
 } from "lucide-react";
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
@@ -148,20 +148,16 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
       </div>
 
       {/* ── Search ────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "0 12px", minWidth: 0 }}>
-        <div style={{
-          position: "relative",
-          width: "100%", maxWidth: 360,
-          height: 34,
-        }}>
+      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "0 16px", minWidth: 0 }}>
+        <div style={{ position: "relative", width: "100%", maxWidth: 380, height: 36 }}>
+
           {/* Search icon */}
           <div style={{
-            position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)",
+            position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
             pointerEvents: "none", display: "flex", alignItems: "center",
-            transition: "opacity 0.15s",
-            opacity: searchFocused ? 0.7 : 0.4,
+            opacity: searchFocused ? 0.8 : 0.45, transition: "opacity 0.15s",
           }}>
-            <Search size={14} color="#3F3F46" />
+            <Search size={15} color="#3F3F46" />
           </div>
 
           <input
@@ -171,53 +167,51 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
             onChange={e => setSearchValue(e.target.value)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
-            placeholder="Search employees..."
+            placeholder="Search employees"
             style={{
               width: "100%", height: "100%",
-              paddingLeft: 32, paddingRight: 52,
-              background: searchFocused ? "#fff" : "#F9FAFB",
-              border: `1.5px solid ${searchFocused ? "#7C5CF6" : "#E4E4E7"}`,
-              borderRadius: 9,
-              fontSize: 13,
+              paddingLeft: 36, paddingRight: searchValue ? 36 : 64,
+              background: "#fff",
+              border: `1px solid ${searchFocused ? "#C4B5FD" : "#D4D4D8"}`,
+              borderRadius: 999,
+              fontSize: 13.5,
               color: "#18181B",
               fontFamily: "Inter, system-ui, sans-serif",
               outline: "none",
-              boxShadow: searchFocused ? "0 0 0 3px rgba(124,92,246,0.10)" : "none",
-              transition: "border-color 0.15s, background 0.15s, box-shadow 0.15s",
+              boxShadow: searchFocused ? "0 0 0 3px rgba(124,92,246,0.08)" : "none",
+              transition: "border-color 0.15s, box-shadow 0.15s",
               boxSizing: "border-box",
             }}
           />
 
-          {/* ⌘K badge — fades out when typing */}
+          {/* ⌘K badge */}
           {!searchValue && (
             <div style={{
-              position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)",
-              display: "flex", alignItems: "center", gap: 1,
+              position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+              display: "flex", alignItems: "center", gap: 2,
               background: "#F4F4F5", border: "1px solid #E4E4E7",
-              borderRadius: 5, padding: "2px 5px",
+              borderRadius: 6, padding: "2px 6px",
               pointerEvents: "none",
-              opacity: searchFocused ? 0.5 : 1,
+              opacity: searchFocused ? 0.4 : 0.9,
               transition: "opacity 0.15s",
             }}>
-              <span style={{ fontSize: 11, color: "#71717A", fontWeight: 500, lineHeight: 1 }}>⌘</span>
-              <span style={{ fontSize: 11, color: "#71717A", fontWeight: 500, lineHeight: 1 }}>K</span>
+              <span style={{ fontSize: 11, color: "#71717A", fontWeight: 500, lineHeight: 1.4 }}>⌘</span>
+              <span style={{ fontSize: 11, color: "#71717A", fontWeight: 500, lineHeight: 1.4 }}>K</span>
             </div>
           )}
 
-          {/* Clear button — appears when typing */}
+          {/* Clear ✕ */}
           {searchValue && (
             <button
               onClick={() => { setSearchValue(""); searchRef.current?.focus(); }}
               style={{
-                position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)",
+                position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
                 width: 18, height: 18, borderRadius: "50%",
                 background: "#E4E4E7", border: "none", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, color: "#52525B", lineHeight: 1, fontWeight: 600,
+                fontSize: 10, color: "#52525B", fontWeight: 700,
               }}
-            >
-              ✕
-            </button>
+            >✕</button>
           )}
         </div>
       </div>
@@ -243,7 +237,7 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
             whiteSpace: "nowrap", transition: "all 0.12s",
           }}
         >
-          <History size={14} color={iconColor} />
+          <RotateCcw size={14} color={iconColor} />
           Go to Classic
         </button>
 
@@ -274,11 +268,6 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
 
         {/* Divider */}
         <div style={{ width: 1, height: 20, background: "#E4E4E7", margin: "0 4px" }} />
-
-        {/* Zap */}
-        <IconBtn title="What's new">
-          <Zap size={15} color={iconColor} />
-        </IconBtn>
 
         {/* Bell with notification dot */}
         <div style={{ position: "relative" }}>
@@ -314,10 +303,6 @@ export default function TopBar({ collapsed, onToggleCollapse }: TopBarProps) {
           />
         </button>
 
-        {/* Sparkle / AI */}
-        <IconBtn title="AI features">
-          <Sparkles size={15} color={iconColor} />
-        </IconBtn>
       </div>
     </div>
   );
