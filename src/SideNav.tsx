@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import ReactDOM from "react-dom";
 
 // ─── Color tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -156,6 +157,37 @@ const icons: Record<string, (color: string) => React.ReactNode> = {
   </Svg>,
 };
 
+// ─── Tooltip portal ───────────────────────────────────────────────────────────
+
+function NavTooltip({ label, anchor }: { label: string; anchor: HTMLElement | null }) {
+  if (!anchor) return null;
+  const rect = anchor.getBoundingClientRect();
+  const top = rect.top + rect.height / 2;
+  return ReactDOM.createPortal(
+    <div style={{
+      position: "fixed",
+      left: rect.right + 10,
+      top,
+      transform: "translateY(-50%)",
+      background: "#18181B",
+      color: "#FAFAFA",
+      fontSize: 12,
+      fontWeight: 500,
+      padding: "5px 10px",
+      borderRadius: 7,
+      whiteSpace: "nowrap",
+      pointerEvents: "none",
+      zIndex: 9999,
+      fontFamily: "Inter, system-ui, sans-serif",
+      letterSpacing: "0.01em",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+    }}>
+      {label}
+    </div>,
+    document.body
+  );
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function Icon({ name, color }: { name: string; color: string }) {
@@ -176,55 +208,62 @@ interface NavItemProps {
 
 function NavItem({ iconName, label, color, active = false, rightSlot, onClick, collapsed = false }: NavItemProps) {
   const [hovered, setHovered] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
   return (
-    <div
-      title={collapsed ? label : undefined}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: collapsed ? "center" : "flex-start",
-        padding: collapsed ? "0" : "0 8px",
-        gap: 8,
-        height: 32,
-        borderRadius: 6,
-        cursor: "pointer",
-        background: active
-          ? `${color}14`
-          : hovered ? "rgba(0,0,0,0.04)" : "transparent",
-        transition: "background 0.12s",
-      }}
-    >
-      {/* Full opacity on all icons — active shows section color, inactive shows it too */}
-      <Icon name={iconName} color={color} />
-      {!collapsed && (
-        <>
-          <span style={{
-            flex: 1,
-            fontFamily: "Inter, system-ui, sans-serif",
-            fontWeight: active ? 500 : 400,
-            fontSize: 13.5,
-            lineHeight: "100%",
-            color: active ? color : "#3F3F46",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}>
-            {label}
-          </span>
-          {rightSlot}
-        </>
+    <>
+      <div
+        ref={ref}
+        onClick={onClick}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "flex-start",
+          padding: collapsed ? "0" : "0 8px",
+          gap: 8,
+          height: 34,
+          borderRadius: 8,
+          cursor: "pointer",
+          background: active
+            ? `${color}14`
+            : hovered ? "rgba(0,0,0,0.05)" : "transparent",
+          transition: "background 0.12s",
+          margin: collapsed ? "0 auto" : undefined,
+          width: collapsed ? 36 : undefined,
+        }}
+      >
+        <Icon name={iconName} color={color} />
+        {!collapsed && (
+          <>
+            <span style={{
+              flex: 1,
+              fontFamily: "Inter, system-ui, sans-serif",
+              fontWeight: active ? 500 : 400,
+              fontSize: 13.5,
+              lineHeight: "100%",
+              color: active ? color : "#3F3F46",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}>
+              {label}
+            </span>
+            {rightSlot}
+          </>
+        )}
+      </div>
+      {collapsed && hovered && (
+        <NavTooltip label={label} anchor={ref.current} />
       )}
-    </div>
+    </>
   );
 }
 
 function SectionLabel({ label, collapsed }: { label: string; collapsed?: boolean }) {
   if (collapsed) {
-    // Thin divider instead of label when collapsed
-    return <div style={{ height: 1, background: "#F0F0F0", margin: "4px 10px" }} />;
+    return <div style={{ height: 1, background: "#EBEBEB", margin: "6px 12px" }} />;
   }
   return (
     <div style={{
@@ -245,59 +284,69 @@ function SectionLabel({ label, collapsed }: { label: string; collapsed?: boolean
 function MoreItem({ color, count = 2, onClick, expanded, collapsed = false }:
   { color: string; count?: number; onClick: () => void; expanded: boolean; collapsed?: boolean }) {
   const [hovered, setHovered] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const tooltipLabel = `+${count} more`;
+
   return (
-    <div
-      title={collapsed ? `+${count} more` : undefined}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: collapsed ? "center" : "flex-start",
-        padding: collapsed ? "0" : "0 8px",
-        gap: 8,
-        height: 32,
-        borderRadius: 6,
-        cursor: "pointer",
-        background: hovered ? "rgba(0,0,0,0.04)" : "transparent",
-        transition: "background 0.12s",
-      }}
-    >
-      <Icon name="more" color={color} />
-      {!collapsed && (
-        <>
-          <span style={{
-            flex: 1,
-            fontFamily: "Inter, system-ui, sans-serif",
-            fontWeight: 400,
-            fontSize: 13.5,
-            color: "#3F3F46",
-          }}>More</span>
-          <div style={{
-            background: color,
-            borderRadius: 96,
-            padding: "0 7px",
-            height: 18,
-            display: "flex",
-            alignItems: "center",
-            flexShrink: 0,
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 500, color: "#fff", whiteSpace: "nowrap" }}>
-              +{count} others
-            </span>
-          </div>
-          <div style={{
-            transform: expanded ? "rotate(90deg)" : "none",
-            transition: "transform 0.15s",
-            display: "flex",
-            flexShrink: 0,
-          }}>
-            {icons.chevronRight(color)}
-          </div>
-        </>
+    <>
+      <div
+        ref={ref}
+        onClick={onClick}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "flex-start",
+          padding: collapsed ? "0" : "0 8px",
+          gap: 8,
+          height: 34,
+          borderRadius: 8,
+          cursor: "pointer",
+          background: hovered ? "rgba(0,0,0,0.05)" : "transparent",
+          transition: "background 0.12s",
+          margin: collapsed ? "0 auto" : undefined,
+          width: collapsed ? 36 : undefined,
+        }}
+      >
+        <Icon name="more" color={color} />
+        {!collapsed && (
+          <>
+            <span style={{
+              flex: 1,
+              fontFamily: "Inter, system-ui, sans-serif",
+              fontWeight: 400,
+              fontSize: 13.5,
+              color: "#3F3F46",
+            }}>More</span>
+            <div style={{
+              background: color,
+              borderRadius: 96,
+              padding: "0 7px",
+              height: 18,
+              display: "flex",
+              alignItems: "center",
+              flexShrink: 0,
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 500, color: "#fff", whiteSpace: "nowrap" }}>
+                +{count} others
+              </span>
+            </div>
+            <div style={{
+              transform: expanded ? "rotate(90deg)" : "none",
+              transition: "transform 0.15s",
+              display: "flex",
+              flexShrink: 0,
+            }}>
+              {icons.chevronRight(color)}
+            </div>
+          </>
+        )}
+      </div>
+      {collapsed && hovered && (
+        <NavTooltip label={tooltipLabel} anchor={ref.current} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -346,10 +395,10 @@ export default function SideNav({ collapsed = false }: SideNavProps) {
             flex: 1,
             overflowY: "auto",
             overflowX: "hidden",
-            padding: collapsed ? "8px 4px 16px" : "8px 8px 16px",
+            padding: collapsed ? "10px 0 16px" : "8px 8px 16px",
             display: "flex",
             flexDirection: "column",
-            gap: collapsed ? 4 : 20,
+            gap: collapsed ? 2 : 20,
           }}
         >
           {/* CPOHQ */}
