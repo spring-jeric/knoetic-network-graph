@@ -160,9 +160,9 @@ function getMockEmployees(skillName: string): Employee[] {
 }
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const ORANGE = "#F97316";
-const ORANGE_LIGHT = "#FFF7ED";
-const ORANGE_BORDER = "#FED7AA";
+const ORANGE = "#7C5CF6";
+const ORANGE_LIGHT = "#F5F3FF";
+const ORANGE_BORDER = "#DDD6FE";
 
 // ─── Confidence chip ──────────────────────────────────────────────────────────
 const CONF_STYLES: Record<Confidence, { bg: string; text: string; label: string }> = {
@@ -284,7 +284,7 @@ function EmployeeRow({
         style={{
           display: "flex", alignItems: "flex-start", gap: 10,
           padding: "12px 16px",
-          background: expanded ? "#FFFBF5" : hov ? "#FAFAFA" : "transparent",
+          background: expanded ? "#F5F3FF" : hov ? "#FAFAFA" : "transparent",
           cursor: "pointer", transition: "background 0.12s",
           borderTop: "1px solid #F5F5F5",
         }}
@@ -566,7 +566,7 @@ function AiExtractionCard({ query, onClose }: { query: string; onClose: () => vo
 
   if (!done) return (
     <div style={{
-      background: "#FFFBF5", border: `1px solid ${ORANGE_BORDER}`,
+      background: "#F5F3FF", border: `1px solid ${ORANGE_BORDER}`,
       borderRadius: 12, padding: "20px 24px", marginBottom: 24,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -582,7 +582,7 @@ function AiExtractionCard({ query, onClose }: { query: string; onClose: () => vo
           </div>
         </div>
       </div>
-      <div style={{ height: 4, background: "#FED7AA", borderRadius: 2, overflow: "hidden" }}>
+      <div style={{ height: 4, background: "#DDD6FE", borderRadius: 2, overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${progress}%`, background: ORANGE, borderRadius: 2, transition: "width 0.06s linear" }} />
       </div>
     </div>
@@ -590,7 +590,7 @@ function AiExtractionCard({ query, onClose }: { query: string; onClose: () => vo
 
   return (
     <div style={{
-      background: "#FFFBF5", border: `1px solid ${ORANGE_BORDER}`,
+      background: "#F5F3FF", border: `1px solid ${ORANGE_BORDER}`,
       borderRadius: 12, padding: "20px 24px", marginBottom: 24,
       animation: "fadeUp 0.3s ease",
     }}>
@@ -754,7 +754,7 @@ export default function SkillsSearch() {
                 background: "#fff", padding: "0 16px", height: 50,
                 border: `1.5px solid ${showDropdown || query ? ORANGE : "#E4E4E7"}`,
                 borderRadius: 12,
-                boxShadow: showDropdown || query ? "0 0 0 3px rgba(249,115,22,0.10),0 2px 10px rgba(0,0,0,0.06)" : "0 1px 3px rgba(0,0,0,0.05)",
+                boxShadow: showDropdown || query ? "0 0 0 3px rgba(124,92,246,0.10),0 2px 10px rgba(0,0,0,0.06)" : "0 1px 3px rgba(0,0,0,0.05)",
                 transition: "border-color 0.15s, box-shadow 0.15s",
               }}>
                 <Search size={18} color={query ? ORANGE : "#A1A1AA"} style={{ flexShrink: 0, transition: "color 0.15s" }} />
