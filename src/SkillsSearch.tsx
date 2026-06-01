@@ -646,6 +646,236 @@ function CountBadge({ n, orange }: { n: number; orange?: boolean }) {
   );
 }
 
+// ─── Predefined taxonomy mock data ───────────────────────────────────────────
+
+interface PredefinedSkill { name: string }
+interface PredefinedCategory { name: string; count: number; skills: PredefinedSkill[] }
+interface PredefinedTheme { theme: string; count: number; categories: PredefinedCategory[] }
+
+const PREDEFINED_TAXONOMY: PredefinedTheme[] = [
+  {
+    theme: "Leadership", count: 5,
+    categories: [
+      { name: "People Management", count: 3, skills: [
+        { name: "Delegation" },
+        { name: "Performance Feedback" },
+        { name: "Team Building" },
+      ]},
+      { name: "Strategic Leadership", count: 2, skills: [
+        { name: "Vision Setting" },
+        { name: "Change Management" },
+      ]},
+    ],
+  },
+  {
+    theme: "Technical", count: 4,
+    categories: [
+      { name: "Engineering", count: 2, skills: [
+        { name: "System Design" },
+        { name: "Code Review" },
+      ]},
+      { name: "Data & Analytics", count: 2, skills: [
+        { name: "SQL" },
+        { name: "Data Visualization" },
+      ]},
+    ],
+  },
+  {
+    theme: "Communication", count: 4,
+    categories: [
+      { name: "Written", count: 2, skills: [
+        { name: "Documentation" },
+        { name: "Report Writing" },
+      ]},
+      { name: "Verbal", count: 2, skills: [
+        { name: "Presentation Skills" },
+        { name: "Stakeholder Updates" },
+      ]},
+    ],
+  },
+];
+
+// ─── Promo banner ─────────────────────────────────────────────────────────────
+
+function PromoBanner({ onSwitch }: { onSwitch: () => void }) {
+  return (
+    <div style={{
+      background: "linear-gradient(135deg, #EEF2FF 0%, #EFF6FF 100%)",
+      border: "1px solid #C7D2FE",
+      borderRadius: 12, padding: "16px 18px",
+      display: "flex", alignItems: "flex-start", gap: 12,
+      marginBottom: 20,
+    }}>
+      <div style={{
+        width: 34, height: 34, borderRadius: 9,
+        background: "#7C5CF6", display: "flex", alignItems: "center",
+        justifyContent: "center", flexShrink: 0,
+      }}>
+        <Sparkles size={16} color="#fff" />
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: "#18181B", fontFamily: "Inter, system-ui, sans-serif", marginBottom: 4 }}>
+          Try AI-Generated Skills
+        </div>
+        <div style={{ fontSize: 12.5, color: "#52525B", lineHeight: 1.6, fontFamily: "Inter, system-ui, sans-serif", marginBottom: 12 }}>
+          Discover skills extracted from your org's own performance reviews, check-ins, and profiles — unique to your company's language.
+        </div>
+        <button
+          onClick={onSwitch}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            background: "#7C5CF6", border: "none", borderRadius: 7,
+            padding: "7px 14px", color: "#fff",
+            fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+            fontFamily: "Inter, system-ui, sans-serif",
+            transition: "opacity 0.12s",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
+          onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+        >
+          <Sparkles size={12} />
+          Switch to AI-Generated Skills
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Predefined taxonomy browser ─────────────────────────────────────────────
+
+function PredefinedTaxonomyBrowser() {
+  const [expandedThemes, setExpandedThemes] = useState<Set<string>>(
+    new Set(["Leadership", "Technical", "Communication"])
+  );
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(
+    new Set(["People Management"])
+  );
+  const toggleTheme = (t: string) => setExpandedThemes(prev => { const n = new Set(prev); n.has(t) ? n.delete(t) : n.add(t); return n; });
+  const toggleCat   = (c: string) => setExpandedCats(prev =>   { const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c); return n; });
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #EBEBEB", borderRadius: 12, overflow: "hidden" }}>
+      {PREDEFINED_TAXONOMY.map((theme, ti) => (
+        <div key={theme.theme}>
+          {/* Theme row */}
+          <div
+            onClick={() => toggleTheme(theme.theme)}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "13px 18px",
+              background: "#FAFAFA", borderTop: ti > 0 ? "1px solid #F0F0F0" : "none",
+              cursor: "pointer", userSelect: "none",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = "#F4F4F5")}
+            onMouseLeave={e => (e.currentTarget.style.background = "#FAFAFA")}
+          >
+            <div style={{ transform: expandedThemes.has(theme.theme) ? "rotate(90deg)" : "none", transition: "transform 0.15s", display: "flex" }}>
+              <ChevronRight size={15} color="#71717A" />
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#18181B", fontFamily: "Inter, system-ui, sans-serif", flex: 1 }}>
+              {theme.theme}
+            </span>
+            <span style={{
+              background: "#EFF6FF", border: "1px solid #BFDBFE",
+              borderRadius: 5, padding: "1px 7px",
+              fontSize: 11, fontWeight: 500, color: "#2563EB",
+              fontFamily: "Inter, system-ui, sans-serif",
+            }}>
+              {theme.count} skills
+            </span>
+          </div>
+
+          {expandedThemes.has(theme.theme) && theme.categories.map(cat => (
+            <div key={cat.name}>
+              {/* Category row */}
+              <div
+                onClick={() => toggleCat(cat.name)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 18px 10px 44px", borderTop: "1px solid #F5F5F5",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#FAFAFA")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+              >
+                <div style={{ transform: expandedCats.has(cat.name) ? "rotate(90deg)" : "none", transition: "transform 0.15s", display: "flex" }}>
+                  <ChevronRight size={13} color="#A1A1AA" />
+                </div>
+                <span style={{ fontSize: 13.5, fontWeight: 500, color: "#3F3F46", fontFamily: "Inter, system-ui, sans-serif", flex: 1 }}>
+                  {cat.name}
+                </span>
+                <span style={{
+                  background: "#F4F4F5", border: "1px solid #E4E4E7",
+                  borderRadius: 5, padding: "1px 7px",
+                  fontSize: 11, fontWeight: 500, color: "#71717A",
+                  fontFamily: "Inter, system-ui, sans-serif",
+                }}>
+                  {cat.count} skills
+                </span>
+              </div>
+
+              {expandedCats.has(cat.name) && cat.skills.map(skill => (
+                <div
+                  key={skill.name}
+                  style={{
+                    padding: "9px 18px 9px 68px",
+                    borderTop: "1px solid #F9F9F9",
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: "#52525B", fontFamily: "Inter, system-ui, sans-serif" }}>
+                    {skill.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Floating version switcher ────────────────────────────────────────────────
+
+function FloatingVersionSwitcher({
+  current, onChange,
+}: { current: "empty" | "populated"; onChange: (v: "empty" | "populated") => void }) {
+  return (
+    <div style={{
+      position: "fixed", bottom: 24, right: 24, zIndex: 200,
+      background: "#18181B", borderRadius: 10,
+      padding: "7px 10px",
+      display: "flex", alignItems: "center", gap: 8,
+      boxShadow: "0 4px 24px rgba(0,0,0,0.28), 0 1px 4px rgba(0,0,0,0.18)",
+    }}>
+      <span style={{
+        fontSize: 10, fontWeight: 600, color: "#71717A",
+        fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.06em",
+        textTransform: "uppercase",
+      }}>
+        View
+      </span>
+      <div style={{ display: "flex", background: "#27272A", borderRadius: 6, padding: 2, gap: 1 }}>
+        {(["empty", "populated"] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => onChange(v)}
+            style={{
+              padding: "4px 10px", borderRadius: 5, border: "none", cursor: "pointer",
+              background: current === v ? "#fff" : "transparent",
+              color: current === v ? "#18181B" : "#71717A",
+              fontSize: 11, fontWeight: current === v ? 600 : 400,
+              fontFamily: "Inter, system-ui, sans-serif",
+              transition: "all 0.15s",
+            }}
+          >
+            {v === "empty" ? "Empty" : "Populated"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
 function EmptyState() {
@@ -682,6 +912,7 @@ export default function SkillsSearch() {
   );
   const [selectedSkill, setSelectedSkill] = useState<FlatSkill | null>(null);
   const [aiResult, setAiResult]       = useState<string | null>(null);
+  const [predefinedView, setPredefinedView] = useState<"empty" | "populated">("empty");
 
   const searchRef  = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -740,9 +971,11 @@ export default function SkillsSearch() {
               </button>
             ))}
           </div>
-          <span style={{ fontSize: 12, color: "#A1A1AA", fontFamily: "Inter, system-ui, sans-serif" }}>
-            Last updated: May 28, 2026
-          </span>
+          {activeTab === "ai" && (
+            <span style={{ fontSize: 12, color: "#A1A1AA", fontFamily: "Inter, system-ui, sans-serif" }}>
+              Last updated: May 28, 2026
+            </span>
+          )}
         </div>
 
         {activeTab === "ai" ? (
@@ -875,21 +1108,32 @@ export default function SkillsSearch() {
           </>
         ) : (
           /* Predefined Skills tab */
-          <div style={{
-            background: "#fff", border: "1px solid #EBEBEB", borderRadius: 12,
-            padding: "40px 32px", display: "flex", flexDirection: "column",
-            alignItems: "center", gap: 8,
-          }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#F4F4F5", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
-              <BookOpen size={22} color="#A1A1AA" />
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#71717A", fontFamily: "Inter, system-ui, sans-serif" }}>
-              Predefined Skills taxonomy
-            </div>
-            <div style={{ fontSize: 13, color: "#A1A1AA", fontFamily: "Inter, system-ui, sans-serif", textAlign: "center", maxWidth: 360, lineHeight: 1.6 }}>
-              Existing view — not redesigned in this project.
-            </div>
-          </div>
+          <>
+            {predefinedView === "populated" ? (
+              <>
+                <PromoBanner onSwitch={() => setActiveTab("ai")} />
+                <PredefinedTaxonomyBrowser />
+              </>
+            ) : (
+              /* Empty state */
+              <div style={{
+                background: "#fff", border: "1px solid #EBEBEB", borderRadius: 12,
+                padding: "56px 32px", display: "flex", flexDirection: "column",
+                alignItems: "center", gap: 12,
+              }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <BookOpen size={24} color="#93C5FD" />
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#71717A", fontFamily: "Inter, system-ui, sans-serif" }}>
+                  Predefined Skills taxonomy
+                </div>
+                <div style={{ fontSize: 13, color: "#A1A1AA", fontFamily: "Inter, system-ui, sans-serif", textAlign: "center", maxWidth: 340, lineHeight: 1.6 }}>
+                  Predefined Skills taxonomy — existing view, not redesigned in this project.
+                </div>
+              </div>
+            )}
+            <FloatingVersionSwitcher current={predefinedView} onChange={setPredefinedView} />
+          </>
         )}
       </div>
 
