@@ -47,7 +47,10 @@ const TAXONOMY: Theme[] = [
       { name: "Mindset & Challenging Status Quo", count: 8, skills: [
         { name: "Challenge the Status Quo", employees: 22 },
         { name: "First-Principles Thinking", employees: 15 },
+      ]},
+      { name: "Achievement Focus", count: 4, skills: [
         { name: "Goal Reverse Engineering", employees: 9 },
+        { name: "Outcome Ownership", employees: 12 },
       ]},
     ],
   },
@@ -78,6 +81,10 @@ const TAXONOMY: Theme[] = [
       { name: "Strategic Vision", count: 6, skills: [
         { name: "Market Analysis", employees: 14 },
         { name: "Competitive Intelligence", employees: 9 },
+      ]},
+      { name: "Strategic Planning", count: 5, skills: [
+        { name: "Goal Decomposition", employees: 16 },
+        { name: "Scenario Modeling", employees: 8 },
       ]},
     ],
   },
@@ -483,13 +490,13 @@ function SearchDropdown({
     <div style={{
       position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
       background: "#fff", border: "1px solid #E4E4E7", borderRadius: 12,
-      boxShadow: "0 8px 30px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)",
+      boxShadow: "0 12px 40px rgba(0,0,0,0.12), 0 2px 10px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.02)",
       overflow: "hidden", zIndex: 100,
     }}>
       {matches.length > 0 && (
         <>
-          <div style={{ padding: "8px 0 4px 14px" }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: "#A1A1AA", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "Inter, system-ui, sans-serif" }}>
+          <div style={{ padding: "10px 14px 6px" }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#A1A1AA", textTransform: "uppercase", letterSpacing: "0.09em", fontFamily: "Inter, system-ui, sans-serif" }}>
               Matching Skills
             </span>
           </div>
@@ -497,49 +504,53 @@ function SearchDropdown({
             <div
               key={`${skill.theme}:${skill.name}`}
               onClick={() => onSelectSkill(skill)}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", cursor: "pointer", transition: "background 0.1s" }}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", cursor: "pointer", transition: "background 0.1s" }}
               onMouseEnter={e => (e.currentTarget.style.background = "#F9F9F9")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
-              <div>
+              {/* Green matched dot */}
+              <span style={{
+                width: 8, height: 8, borderRadius: "50%",
+                background: "#22C55E",
+                boxShadow: "0 0 0 3px rgba(34,197,94,0.16)",
+                flexShrink: 0,
+              }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontSize: 13.5, fontWeight: 500, color: "#18181B", fontFamily: "Inter, system-ui, sans-serif" }}>{skill.name}</span>
                 <span style={{ fontSize: 12, color: "#A1A1AA", marginLeft: 6, fontFamily: "Inter, system-ui, sans-serif" }}>· {skill.category}</span>
               </div>
-              <span style={{
-                background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`,
-                borderRadius: 5, padding: "2px 7px", fontSize: 11, fontWeight: 500, color: ORANGE,
-                fontFamily: "Inter, system-ui, sans-serif", flexShrink: 0,
-              }}>
-                {skill.employees}
-              </span>
             </div>
           ))}
-          <div style={{ height: 1, background: "#F0F0F0", margin: "4px 0" }} />
+          <div style={{ height: 1, background: "#F0F0F0", margin: "6px 0 0" }} />
         </>
       )}
 
       {matches.length === 0 && (
         <div style={{ padding: "12px 14px 4px" }}>
           <span style={{ fontSize: 12, color: "#A1A1AA", fontFamily: "Inter, system-ui, sans-serif" }}>No existing skills match "{query}"</span>
-          <div style={{ height: 1, background: "#F0F0F0", margin: "8px 0 4px" }} />
+          <div style={{ height: 1, background: "#F0F0F0", margin: "8px 0 0" }} />
         </div>
       )}
 
       {/* AI extract row */}
       <div
         onClick={() => onAiSearch(query)}
-        style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", cursor: "pointer", transition: "background 0.1s" }}
+        style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", cursor: "pointer", transition: "background 0.1s" }}
         onMouseEnter={e => (e.currentTarget.style.background = ORANGE_LIGHT)}
         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
       >
-        <div style={{ width: 22, height: 22, borderRadius: 5, background: ORANGE, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <Search size={12} color="#fff" />
+        <div style={{ width: 24, height: 24, borderRadius: 6, background: ORANGE_LIGHT, border: `1px solid ${ORANGE_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+          <Search size={13} color={ORANGE} />
         </div>
-        <div>
-          <span style={{ fontSize: 13, color: "#52525B", fontFamily: "Inter, system-ui, sans-serif" }}>Search: </span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#18181B", fontFamily: "Inter, system-ui, sans-serif" }}>{query}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div>
+            <span style={{ fontSize: 13, color: "#52525B", fontFamily: "Inter, system-ui, sans-serif" }}>Search: </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: ORANGE, fontFamily: "Inter, system-ui, sans-serif" }}>{query}</span>
+          </div>
+          <div style={{ fontSize: 11, color: "#A1A1AA", marginTop: 2, fontFamily: "Inter, system-ui, sans-serif" }}>
+            Extract new skills matching this phrase
+          </div>
         </div>
-        <span style={{ marginLeft: "auto", fontSize: 11, color: "#A1A1AA", fontFamily: "Inter, system-ui, sans-serif" }}>AI extract</span>
       </div>
     </div>
   );
