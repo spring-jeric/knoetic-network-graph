@@ -611,12 +611,13 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       <>
                         <circle
                           cx={node.x + r * 0.7} cy={node.y - r * 0.7} r={6.4}
-                          fill={isTeamAvg ? bg : "#6B7280"} stroke="#fff" strokeWidth={1.6}
+                          fill={isTeamAvg ? bg : "#fff"}
+                          stroke={isTeamAvg ? "#fff" : "#D1D5DB"} strokeWidth={1.6}
                         />
                         <text
                           x={node.x + r * 0.7} y={node.y - r * 0.7}
                           textAnchor="middle" dominantBaseline="central"
-                          fill="#fff" fontSize={7.2} fontWeight={700}
+                          fill={isTeamAvg ? "#fff" : "#374151"} fontSize={7.2} fontWeight={700}
                           fontFamily="Inter, system-ui, sans-serif" pointerEvents="none"
                         >
                           {node.childCount}
@@ -660,12 +661,13 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       <>
                         <circle
                           cx={node.x + r * 0.7} cy={node.y - r * 0.7} r={6.4}
-                          fill={isTeamAvg ? bg : "#6B7280"} stroke="#fff" strokeWidth={1.6}
+                          fill={isTeamAvg ? bg : "#fff"}
+                          stroke={isTeamAvg ? "#fff" : "#D1D5DB"} strokeWidth={1.6}
                         />
                         <text
                           x={node.x + r * 0.7} y={node.y - r * 0.7}
                           textAnchor="middle" dominantBaseline="central"
-                          fill="#fff" fontSize={7.2} fontWeight={700}
+                          fill={isTeamAvg ? "#fff" : "#374151"} fontSize={7.2} fontWeight={700}
                           fontFamily="Inter, system-ui, sans-serif"
                         >{node.childCount}</text>
                       </>
