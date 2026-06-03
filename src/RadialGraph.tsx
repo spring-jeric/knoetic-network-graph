@@ -457,7 +457,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        background: "#f7f7fa",
+        background: "#F5F8FE",
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >

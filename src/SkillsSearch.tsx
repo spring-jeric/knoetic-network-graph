@@ -951,7 +951,7 @@ export default function SkillsSearch() {
   const toggleCategory = (c: string) => setExpandedCategories(prev => { const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c); return n; });
 
   return (
-    <div style={{ flex: 1, display: "flex", height: "100%", background: "#F9F9F9", overflow: "hidden" }}>
+    <div style={{ flex: 1, display: "flex", height: "100%", background: "#F5F8FE", overflow: "hidden" }}>
 
       {/* ── Main scroll area ──────────────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px", minWidth: 0 }}>
