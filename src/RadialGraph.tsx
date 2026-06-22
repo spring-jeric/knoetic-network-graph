@@ -87,23 +87,10 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Curated soft-but-vivid gradient palettes for initials avatars.
-const INITIAL_GRADIENTS: [string, string][] = [
-  ["#6366F1", "#8B5CF6"], // indigo → violet
-  ["#0EA5E9", "#22D3EE"], // sky → cyan
-  ["#10B981", "#34D399"], // emerald → green
-  ["#F59E0B", "#FBBF24"], // amber
-  ["#EC4899", "#F472B6"], // pink
-  ["#8B5CF6", "#D946EF"], // violet → fuchsia
-  ["#14B8A6", "#2DD4BF"], // teal
-  ["#F97316", "#FB923C"], // orange
-  ["#3B82F6", "#60A5FA"], // blue
-  ["#E11D48", "#FB7185"], // rose
-];
-
-function getInitialGradientIndex(name: string): number {
-  return hashName(name) % INITIAL_GRADIENTS.length;
-}
+// Initials avatars use a single neutral tone so they don't compete with the
+// performance heatmap colors (the ring/glow already encode rating).
+const INITIALS_FILL = "#E5E7EB"; // gray-200
+const INITIALS_TEXT = "#6B7280"; // gray-500
 
 function getNodeDepth(id: string): number {
   return id === "0" ? 0 : id.split("-").length - 1;
@@ -538,13 +525,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 </React.Fragment>
               );
             })}
-            {/* Initials-avatar gradients (for the ~50% without a profile photo) */}
-            {INITIAL_GRADIENTS.map(([c0, c1], i) => (
-              <linearGradient key={`initgrad-${i}`} id={`initgrad-${i}`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor={c0} />
-                <stop offset="100%" stopColor={c1} />
-              </linearGradient>
-            ))}
           </defs>
           <g transform={`${transform}`}>
             <g transform={`translate(${dimensions.width / 2}, ${dimensions.height / 2})`}>
@@ -595,7 +575,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 const avatarUrl = getAvatarUrl(node.orgNode.name);
                 const showPhoto = hasPhoto(node.orgNode.name);
                 const initials = getInitials(node.orgNode.name);
-                const gradIdx = getInitialGradientIndex(node.orgNode.name);
                 const isTeamAvg = viewMode === "team-average" && node.childCount > 0;
 
                 return (
@@ -652,11 +631,11 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       />
                     ) : (
                       <>
-                        <circle cx={node.x} cy={node.y} r={r - 3} fill={`url(#initgrad-${gradIdx})`} />
+                        <circle cx={node.x} cy={node.y} r={r - 3} fill={INITIALS_FILL} />
                         <text
                           x={node.x} y={node.y}
                           textAnchor="middle" dominantBaseline="central"
-                          fill="#fff" fontWeight={600}
+                          fill={INITIALS_TEXT} fontWeight={600}
                           fontSize={r * 0.72}
                           fontFamily="Inter, system-ui, sans-serif"
                           pointerEvents="none"
@@ -702,7 +681,6 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 const avatarUrl = getAvatarUrl(node.orgNode.name);
                 const showPhoto = hasPhoto(node.orgNode.name);
                 const initials = getInitials(node.orgNode.name);
-                const gradIdx = getInitialGradientIndex(node.orgNode.name);
                 const isTeamAvg = viewMode === "team-average" && node.childCount > 0;
                 return (
                   <g pointerEvents="none">
@@ -724,11 +702,11 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       />
                     ) : (
                       <>
-                        <circle cx={node.x} cy={node.y} r={r - 3} fill={`url(#initgrad-${gradIdx})`} />
+                        <circle cx={node.x} cy={node.y} r={r - 3} fill={INITIALS_FILL} />
                         <text
                           x={node.x} y={node.y}
                           textAnchor="middle" dominantBaseline="central"
-                          fill="#fff" fontWeight={600}
+                          fill={INITIALS_TEXT} fontWeight={600}
                           fontSize={r * 0.72}
                           fontFamily="Inter, system-ui, sans-serif"
                           style={{ letterSpacing: "0.02em" }}
