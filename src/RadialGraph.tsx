@@ -93,12 +93,12 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Initials avatars use a single blue tone (not in the rating scale, so it
-// reads as "no photo" and never competes with the heatmap colors). One-hue
-// gradient for a bit of depth — never a per-person rainbow.
-const INITIALS_GRAD_FROM = "#60A5FA"; // blue-400
-const INITIALS_GRAD_TO   = "#2563EB"; // blue-600
-const INITIALS_TEXT = "#FFFFFF";
+// Initials avatars use a soft slate tone — recessive like neutral gray so it
+// never competes with the rating ring, but a cool hue + subtle gradient +
+// crisp initials give it depth instead of looking dull. One shared gradient.
+const INITIALS_GRAD_FROM = "#F1F5F9"; // slate-100
+const INITIALS_GRAD_TO   = "#DCE3EC"; // slate-200-ish
+const INITIALS_TEXT = "#64748B";      // slate-500
 
 function getNodeDepth(id: string): number {
   return id === "0" ? 0 : id.split("-").length - 1;
