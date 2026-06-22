@@ -93,10 +93,12 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Initials avatars use a single neutral tone so they don't compete with the
-// performance heatmap colors (the ring/glow already encode rating).
-const INITIALS_FILL = "#E5E7EB"; // gray-200
-const INITIALS_TEXT = "#6B7280"; // gray-500
+// Initials avatars use a single blue tone (not in the rating scale, so it
+// reads as "no photo" and never competes with the heatmap colors). One-hue
+// gradient for a bit of depth — never a per-person rainbow.
+const INITIALS_GRAD_FROM = "#60A5FA"; // blue-400
+const INITIALS_GRAD_TO   = "#2563EB"; // blue-600
+const INITIALS_TEXT = "#FFFFFF";
 
 function getNodeDepth(id: string): number {
   return id === "0" ? 0 : id.split("-").length - 1;
@@ -536,6 +538,11 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 </React.Fragment>
               );
             })}
+            {/* Initials-avatar fill (no profile photo) — single blue hue */}
+            <linearGradient id="initials-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={INITIALS_GRAD_FROM} />
+              <stop offset="100%" stopColor={INITIALS_GRAD_TO} />
+            </linearGradient>
           </defs>
           <g transform={`${transform}`}>
             <g transform={`translate(${dimensions.width / 2}, ${dimensions.height / 2})`}>
@@ -642,7 +649,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       />
                     ) : (
                       <>
-                        <circle cx={node.x} cy={node.y} r={r - 3} fill={INITIALS_FILL} />
+                        <circle cx={node.x} cy={node.y} r={r - 3} fill="url(#initials-grad)" />
                         <text
                           x={node.x} y={node.y}
                           textAnchor="middle" dominantBaseline="central"
@@ -713,7 +720,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       />
                     ) : (
                       <>
-                        <circle cx={node.x} cy={node.y} r={r - 3} fill={INITIALS_FILL} />
+                        <circle cx={node.x} cy={node.y} r={r - 3} fill="url(#initials-grad)" />
                         <text
                           x={node.x} y={node.y}
                           textAnchor="middle" dominantBaseline="central"
