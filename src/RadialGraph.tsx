@@ -56,12 +56,16 @@ function buildIdMap(node: OrgNode, prefix: string = "0"): Map<string, OrgNode> {
   return map;
 }
 
-function getAvatarUrl(name: string): string {
+function hashName(name: string): number {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
   }
-  const abs = Math.abs(hash);
+  return Math.abs(hash);
+}
+
+function getAvatarUrl(name: string): string {
+  const abs = hashName(name);
   const gender = abs % 2 === 0 ? "male" : "female";
   const index = abs % 50;
   return `https://xsgames.co/randomusers/assets/avatars/${gender}/${index}.jpg`;
@@ -69,6 +73,36 @@ function getAvatarUrl(name: string): string {
 
 function getAvatarFallback(name: string): string {
   return `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(name)}&backgroundColor=e8edf2`;
+}
+
+// ~50% of people have no profile photo → show initials instead.
+function hasPhoto(name: string): boolean {
+  return hashName(name) % 2 === 0;
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// Curated soft-but-vivid gradient palettes for initials avatars.
+const INITIAL_GRADIENTS: [string, string][] = [
+  ["#6366F1", "#8B5CF6"], // indigo → violet
+  ["#0EA5E9", "#22D3EE"], // sky → cyan
+  ["#10B981", "#34D399"], // emerald → green
+  ["#F59E0B", "#FBBF24"], // amber
+  ["#EC4899", "#F472B6"], // pink
+  ["#8B5CF6", "#D946EF"], // violet → fuchsia
+  ["#14B8A6", "#2DD4BF"], // teal
+  ["#F97316", "#FB923C"], // orange
+  ["#3B82F6", "#60A5FA"], // blue
+  ["#E11D48", "#FB7185"], // rose
+];
+
+function getInitialGradientIndex(name: string): number {
+  return hashName(name) % INITIAL_GRADIENTS.length;
 }
 
 function getNodeDepth(id: string): number {
@@ -504,6 +538,13 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 </React.Fragment>
               );
             })}
+            {/* Initials-avatar gradients (for the ~50% without a profile photo) */}
+            {INITIAL_GRADIENTS.map(([c0, c1], i) => (
+              <linearGradient key={`initgrad-${i}`} id={`initgrad-${i}`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor={c0} />
+                <stop offset="100%" stopColor={c1} />
+              </linearGradient>
+            ))}
           </defs>
           <g transform={`${transform}`}>
             <g transform={`translate(${dimensions.width / 2}, ${dimensions.height / 2})`}>
@@ -552,6 +593,9 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 const hasHiddenChildren = node.childCount > 0;
                 const clipId = clipIds.get(node.id)!;
                 const avatarUrl = getAvatarUrl(node.orgNode.name);
+                const showPhoto = hasPhoto(node.orgNode.name);
+                const initials = getInitials(node.orgNode.name);
+                const gradIdx = getInitialGradientIndex(node.orgNode.name);
                 const isTeamAvg = viewMode === "team-average" && node.childCount > 0;
 
                 return (
@@ -594,17 +638,34 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       strokeDasharray={isTeamAvg && showColorBorder ? `${Math.max(3, r * 0.3)} ${Math.max(2, r * 0.2)}` : "none"}
                     />
 
-                    {/* Avatar photo */}
-                    <image
-                      href={avatarUrl}
-                      x={node.x - (r - 3)}
-                      y={node.y - (r - 3)}
-                      width={(r - 3) * 2}
-                      height={(r - 3) * 2}
-                      clipPath={`url(#${clipId})`}
-                      preserveAspectRatio="xMidYMid slice"
-                      onError={(e) => { (e.target as SVGImageElement).setAttribute("href", getAvatarFallback(node.orgNode.name)); }}
-                    />
+                    {/* Avatar: photo or initials */}
+                    {showPhoto ? (
+                      <image
+                        href={avatarUrl}
+                        x={node.x - (r - 3)}
+                        y={node.y - (r - 3)}
+                        width={(r - 3) * 2}
+                        height={(r - 3) * 2}
+                        clipPath={`url(#${clipId})`}
+                        preserveAspectRatio="xMidYMid slice"
+                        onError={(e) => { (e.target as SVGImageElement).setAttribute("href", getAvatarFallback(node.orgNode.name)); }}
+                      />
+                    ) : (
+                      <>
+                        <circle cx={node.x} cy={node.y} r={r - 3} fill={`url(#initgrad-${gradIdx})`} />
+                        <text
+                          x={node.x} y={node.y}
+                          textAnchor="middle" dominantBaseline="central"
+                          fill="#fff" fontWeight={600}
+                          fontSize={r * 0.72}
+                          fontFamily="Inter, system-ui, sans-serif"
+                          pointerEvents="none"
+                          style={{ letterSpacing: "0.02em" }}
+                        >
+                          {initials}
+                        </text>
+                      </>
+                    )}
 
                     {/* Badge for children count */}
                     {hasHiddenChildren && showColorBadge && (
@@ -639,6 +700,9 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 const bg = scoreColor(es);
                 const clipId = clipIds.get(node.id)!;
                 const avatarUrl = getAvatarUrl(node.orgNode.name);
+                const showPhoto = hasPhoto(node.orgNode.name);
+                const initials = getInitials(node.orgNode.name);
+                const gradIdx = getInitialGradientIndex(node.orgNode.name);
                 const isTeamAvg = viewMode === "team-average" && node.childCount > 0;
                 return (
                   <g pointerEvents="none">
@@ -649,14 +713,30 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                       strokeWidth={showColorBorder ? 1.5 : 1}
                       strokeDasharray={isTeamAvg && showColorBorder ? `${Math.max(3, r * 0.3)} ${Math.max(2, r * 0.2)}` : "none"}
                     />
-                    <image
-                      href={avatarUrl}
-                      x={node.x - (r - 3)} y={node.y - (r - 3)}
-                      width={(r - 3) * 2} height={(r - 3) * 2}
-                      clipPath={`url(#${clipId})`}
-                      preserveAspectRatio="xMidYMid slice"
-                      onError={(e) => { (e.target as SVGImageElement).setAttribute("href", getAvatarFallback(node.orgNode.name)); }}
-                    />
+                    {showPhoto ? (
+                      <image
+                        href={avatarUrl}
+                        x={node.x - (r - 3)} y={node.y - (r - 3)}
+                        width={(r - 3) * 2} height={(r - 3) * 2}
+                        clipPath={`url(#${clipId})`}
+                        preserveAspectRatio="xMidYMid slice"
+                        onError={(e) => { (e.target as SVGImageElement).setAttribute("href", getAvatarFallback(node.orgNode.name)); }}
+                      />
+                    ) : (
+                      <>
+                        <circle cx={node.x} cy={node.y} r={r - 3} fill={`url(#initgrad-${gradIdx})`} />
+                        <text
+                          x={node.x} y={node.y}
+                          textAnchor="middle" dominantBaseline="central"
+                          fill="#fff" fontWeight={600}
+                          fontSize={r * 0.72}
+                          fontFamily="Inter, system-ui, sans-serif"
+                          style={{ letterSpacing: "0.02em" }}
+                        >
+                          {initials}
+                        </text>
+                      </>
+                    )}
                     {node.childCount > 0 && showColorBadge && (
                       <>
                         <circle
