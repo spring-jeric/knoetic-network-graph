@@ -80,6 +80,12 @@ function hasPhoto(name: string): boolean {
   return hashName(name) % 2 === 0;
 }
 
+// ~12% of individual contributors have no rating for the cycle → N/A.
+// Salted hash so it's independent of the photo split.
+function isUnrated(name: string): boolean {
+  return hashName(name + "|rating") % 8 === 3;
+}
+
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
@@ -248,21 +254,26 @@ export default function RadialGraph({ data }: RadialGraphProps) {
     return counts;
   }, [idMap]);
 
-  // Compute effective scores based on cycle + view mode
+  // Compute effective scores based on cycle + view mode.
+  // Unrated leaf employees return -1 → rendered as N/A (gray).
   const effectiveScores = useMemo(() => {
     const scores = new Map<string, number>();
+    // Individual score for a node: leaf + unrated → -1 (N/A), else its cycle score.
+    const indScore = (n: OrgNode) =>
+      (!n.children?.length && isUnrated(n.name)) ? -1 : (n.cycleScores[selectedCycle] ?? n.score);
+
     idMap.forEach((node, id) => {
       if (viewMode === "individual") {
-        scores.set(id, node.cycleScores[selectedCycle] ?? node.score);
+        scores.set(id, indScore(node));
+      } else if (node.children?.length) {
+        // Team average: average of direct children, excluding N/A. All N/A → N/A.
+        const childScores = node.children.map(indScore).filter((s) => s >= 0);
+        const avg = childScores.length
+          ? Math.round((childScores.reduce((a, b) => a + b, 0) / childScores.length) * 100) / 100
+          : -1;
+        scores.set(id, avg);
       } else {
-        // Team average: non-leaf nodes show average of direct children's cycle scores
-        if (node.children?.length) {
-          const childScores = node.children.map((c) => c.cycleScores[selectedCycle] ?? c.score);
-          const avg = Math.round((childScores.reduce((a, b) => a + b, 0) / childScores.length) * 100) / 100;
-          scores.set(id, avg);
-        } else {
-          scores.set(id, node.cycleScores[selectedCycle] ?? node.score);
-        }
+        scores.set(id, indScore(node));
       }
     });
     return scores;
@@ -1118,6 +1129,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
 
         {tooltip && (() => {
           const es = tooltip.effectiveScore;
+          const isNA = es < 0;
           const arc = 2 * Math.PI * 23;
           // Compute node center in screen space (relative to canvas container)
           const screenX = transform.x + transform.k * (tooltip.nodeX + dimensions.width / 2);
@@ -1154,7 +1166,9 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                 {/* Score-color accent strip */}
                 <div style={{
                   height: 3,
-                  background: `linear-gradient(90deg, ${scoreColor(es)} 0%, ${scoreRgba(es, 0.15)} 100%)`,
+                  background: isNA
+                    ? "linear-gradient(90deg, #D1D5DB 0%, rgba(209,213,219,0.15) 100%)"
+                    : `linear-gradient(90deg, ${scoreColor(es)} 0%, ${scoreRgba(es, 0.15)} 100%)`,
                 }} />
 
                 <div style={{ padding: "14px 16px 12px" }}>
@@ -1170,7 +1184,7 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                           stroke={scoreColor(es)}
                           strokeWidth={2.5}
                           strokeLinecap="round"
-                          strokeDasharray={`${es * arc} ${arc}`}
+                          strokeDasharray={`${Math.max(0, es) * arc} ${arc}`}
                           transform="rotate(-90 26 26)"
                         />
                       </svg>
@@ -1204,8 +1218,8 @@ export default function RadialGraph({ data }: RadialGraphProps) {
                     {[
                       {
                         label: viewMode === "team-average" && tooltip.node.children ? "Team Avg" : "Rating",
-                        value: `${(es * 100).toFixed(0)}%`,
-                        color: scoreColor(es),
+                        value: isNA ? "N/A" : `${(es * 100).toFixed(0)}%`,
+                        color: isNA ? "#9CA3AF" : scoreColor(es),
                       },
                       {
                         label: "Reports",
